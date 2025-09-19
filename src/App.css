@@ -201,3 +201,62 @@ body {
 .easter:hover {
   opacity: 1;
 }
+
+/* --- ensure the layout always fills the screen --- */
+html,
+body,
+#root {
+  height: 100%;
+}
+.wip {
+  /* was: min-height: 100%; */
+  min-height: 100vh; /* desktop */
+  min-height: 100dvh; /* modern browsers, accounts for browser UI */
+  display: grid;
+  place-items: center;
+  padding: clamp(24px, 6vmin, 48px) 3vmin;
+  position: relative;
+  overflow: clip; /* keeps ornaments from causing scrollbars */
+}
+
+/* iOS/Safari safe viewport height */
+@supports (min-height: 100svh) {
+  .wip {
+    min-height: 100svh;
+  } /* small viewport height on mobile */
+}
+
+/* --- make the blur/gradient cover the entire viewport --- */
+.bg-ornament {
+  /* was: position: absolute; inset: -20%; */
+  position: fixed; /* pin to viewport, not the card/container */
+  inset: -25%;
+  min-height: 100vh;
+  min-height: 100dvh;
+  z-index: 0;
+  background: radial-gradient(
+      40% 40% at 20% 20%,
+      color-mix(in oklab, var(--accent1) 40%, transparent) 0%,
+      transparent 60%
+    ),
+    radial-gradient(
+      35% 35% at 80% 30%,
+      color-mix(in oklab, var(--accent2) 45%, transparent) 0%,
+      transparent 60%
+    ),
+    radial-gradient(
+      50% 50% at 50% 85%,
+      color-mix(in oklab, var(--accent3) 45%, transparent) 0%,
+      transparent 60%
+    );
+  filter: blur(60px) saturate(120%);
+  animation: floaty 14s ease-in-out infinite alternate;
+  pointer-events: none;
+}
+
+/* keep the content above the background */
+.card,
+.easter {
+  position: relative;
+  z-index: 1;
+}
