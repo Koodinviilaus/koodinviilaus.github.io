@@ -1,3 +1,3 @@
 # koodinviilaus.github.io
 
-WIP
+WIP homepage

@@ -1,42 +1,259 @@
+:root {
+  --bg: #0b0b10;
+  --fg: #e7e8ee;
+  --muted: #a6abbd;
+  --card: #12131a;
+  --accent1: #7c5cff;
+  --accent2: #00e0a4;
+  --accent3: #ffd166;
+  --shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg: #fbfbfe;
+    --fg: #101218;
+    --muted: #4c5367;
+    --card: #ffffff;
+    --shadow: 0 16px 40px rgba(10, 10, 20, 0.12);
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+html,
+body,
 #root {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
+  height: 100%;
+}
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font: 16px/1.4 ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto,
+    "Helvetica Neue", Arial, "Apple Color Emoji", "Segoe UI Emoji";
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
 }
 
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
-}
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
-}
-.logo.react:hover {
-  filter: drop-shadow(0 0 2em #61dafbaa);
+.wip {
+  position: relative;
+  min-height: 100%;
+  display: grid;
+  place-items: center;
+  padding: 6vmin 3vmin;
+  overflow: hidden;
 }
 
-@keyframes logo-spin {
+.bg-ornament {
+  position: absolute;
+  inset: -20%;
+  background: radial-gradient(
+      40% 40% at 20% 20%,
+      color-mix(in oklab, var(--accent1) 40%, transparent) 0%,
+      transparent 60%
+    ),
+    radial-gradient(
+      35% 35% at 80% 30%,
+      color-mix(in oklab, var(--accent2) 45%, transparent) 0%,
+      transparent 60%
+    ),
+    radial-gradient(
+      50% 50% at 50% 85%,
+      color-mix(in oklab, var(--accent3) 45%, transparent) 0%,
+      transparent 60%
+    );
+  filter: blur(60px) saturate(120%);
+  transform: translateZ(0);
+  animation: floaty 14s ease-in-out infinite alternate;
+  pointer-events: none;
+}
+@keyframes floaty {
   from {
-    transform: rotate(0deg);
+    transform: translate(-2%, -1%) scale(1.02);
   }
   to {
-    transform: rotate(360deg);
-  }
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  a:nth-of-type(2) .logo {
-    animation: logo-spin infinite 20s linear;
+    transform: translate(2%, 1%) scale(1.06);
   }
 }
 
 .card {
-  padding: 2em;
+  width: min(820px, 92vw);
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--card), transparent 15%),
+    var(--card)
+  );
+  border: 1px solid color-mix(in oklab, var(--muted) 12%, transparent);
+  border-radius: 24px;
+  box-shadow: var(--shadow);
+  padding: clamp(20px, 5vmin, 40px);
+  backdrop-filter: blur(6px) saturate(110%);
+  position: relative;
 }
 
-.read-the-docs {
-  color: #888;
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5ch;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: 12px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  color: #0a0a0a;
+  background: linear-gradient(90deg, var(--accent2), var(--accent3));
+  box-shadow: 0 6px 18px color-mix(in oklab, var(--accent2) 40%, transparent);
+}
+
+.hero h1 {
+  margin: 10px 0 8px;
+  font-size: clamp(28px, 4.5vw, 44px);
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+}
+.gradient {
+  background: linear-gradient(90deg, var(--accent1), var(--accent2));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.tagline {
+  margin: 0;
+  color: var(--muted);
+  font-size: clamp(14px, 2.4vw, 16px);
+}
+
+.progress {
+  margin: 24px 0 10px;
+  position: relative;
+}
+.bar {
+  height: 12px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: linear-gradient(
+    90deg,
+    color-mix(in oklab, var(--muted) 18%, transparent),
+    transparent
+  );
+  position: relative;
+}
+.bar::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, var(--accent1), var(--accent2));
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  padding-right: 100%;
+  animation: fill 6s ease-in-out infinite;
+}
+@keyframes fill {
+  0% {
+    transform: translateX(-60%);
+  }
+  50% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(10%);
+  }
+}
+.ticks {
+  display: grid;
+  grid-template-columns: repeat(10, 1fr);
+  gap: 0;
+  margin-top: 6px;
+}
+.ticks span {
+  height: 4px;
+  background: color-mix(in oklab, var(--muted) 20%, transparent);
+  border-radius: 2px;
+}
+.progress-label {
+  margin-top: 8px;
+  font-weight: 600;
+}
+.smallprint {
+  color: var(--muted);
+}
+
+.shiplog {
+  list-style: none;
+  padding: 0;
+  margin: 18px 0 8px;
+  display: grid;
+  gap: 8px;
+}
+.shiplog li {
+  color: var(--fg);
+}
+
+.links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 22px 0 6px;
+}
+.btn {
+  appearance: none;
+  border: 1px solid color-mix(in oklab, var(--muted) 18%, transparent);
+  background: color-mix(in oklab, var(--card) 80%, transparent);
+  color: var(--fg);
+  padding: 10px 14px;
+  border-radius: 12px;
+  text-decoration: none;
+  font-weight: 600;
+  transition: transform 0.08s ease, border-color 0.2s, background 0.2s;
+}
+.btn:hover {
+  transform: translateY(-1px);
+  border-color: color-mix(in oklab, var(--accent1) 30%, transparent);
+}
+.btn.ghost {
+  background: transparent;
+}
+
+.foot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-top: 14px;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+/* Debug grid toggle (press . ) */
+.wip.debug::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background-image: linear-gradient(
+      to right,
+      rgba(127, 127, 127, 0.15) 1px,
+      transparent 1px
+    ),
+    linear-gradient(to bottom, rgba(127, 127, 127, 0.12) 1px, transparent 1px);
+  background-size: 24px 24px;
+  pointer-events: none;
+  z-index: 2;
+}
+.easter {
+  position: fixed;
+  right: 10px;
+  bottom: 10px;
+  background: transparent;
+  color: var(--muted);
+  border: none;
+  cursor: pointer;
+  font-size: 12px;
+  opacity: 0.6;
+}
+.easter:hover {
+  opacity: 1;
 }
