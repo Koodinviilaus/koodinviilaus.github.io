@@ -126,62 +126,6 @@ body {
   font-size: clamp(14px, 2.4vw, 16px);
 }
 
-.progress {
-  margin: 24px 0 10px;
-  position: relative;
-}
-.bar {
-  height: 12px;
-  border-radius: 999px;
-  overflow: hidden;
-  background: linear-gradient(
-    90deg,
-    color-mix(in oklab, var(--muted) 18%, transparent),
-    transparent
-  );
-  position: relative;
-}
-.bar::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(90deg, var(--accent1), var(--accent2));
-  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-  -webkit-mask-composite: xor;
-  mask-composite: exclude;
-  padding-right: 100%;
-  animation: fill 6s ease-in-out infinite;
-}
-@keyframes fill {
-  0% {
-    transform: translateX(-60%);
-  }
-  50% {
-    transform: translateX(0%);
-  }
-  100% {
-    transform: translateX(10%);
-  }
-}
-.ticks {
-  display: grid;
-  grid-template-columns: repeat(10, 1fr);
-  gap: 0;
-  margin-top: 6px;
-}
-.ticks span {
-  height: 4px;
-  background: color-mix(in oklab, var(--muted) 20%, transparent);
-  border-radius: 2px;
-}
-.progress-label {
-  margin-top: 8px;
-  font-weight: 600;
-}
-.smallprint {
-  color: var(--muted);
-}
-
 .shiplog {
   list-style: none;
   padding: 0;

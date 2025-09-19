@@ -1,14 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import "./App.css";
-
-function useClock() {
-  const [now, setNow] = useState<Date>(() => new Date());
-  useEffect(() => {
-    const id = setInterval(() => setNow(new Date()), 1000);
-    return () => clearInterval(id);
-  }, []);
-  return now;
-}
+import { ProgressBar } from "./components/ProgressBar";
+import { useWipProgress } from "./hooks/useWipProgress";
 
 function useTitleTicker(base = "WIP — Personal Site") {
   useEffect(() => {
@@ -23,11 +16,8 @@ function useTitleTicker(base = "WIP — Personal Site") {
 }
 
 export default function App() {
-  const now = useClock();
   useTitleTicker();
-
-  // Fake “build progress” that wiggles between 42–96%
-  const progress = useMemo(() => 42 + (now.getSeconds() % 55), [now]);
+  const progress = useWipProgress({ minFloor: 65 }); // tweak timings in the hook config if you want
 
   const [showDots, setShowDots] = useState(false);
   useEffect(() => {
@@ -53,23 +43,7 @@ export default function App() {
           </p>
         </header>
 
-        <div className="progress">
-          <div
-            className="bar"
-            style={{ width: `${progress}%` }}
-            role="progressbar"
-            aria-valuenow={progress}
-            aria-valuemin={0}
-            aria-valuemax={100}
-          />
-          <div className="ticks" aria-hidden="true">
-            {Array.from({ length: 10 }).map((_, i) => (
-              <span key={i} />
-            ))}
-          </div>
-          <div className="progress-label">{progress}% complete*</div>
-          <small className="smallprint">* margin of error: ±100%</small>
-        </div>
+        <ProgressBar value={progress} />
 
         <ul className="shiplog">
           <li>🔧 TypeScript + React scaffolding alive</li>
