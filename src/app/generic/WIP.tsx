@@ -47,6 +47,7 @@ function burstConfetti(durationMs = 900, count = 120) {
 
   let start = 0;
   function frame(ts: number) {
+    if (!ctx) return;
     if (!start) start = ts;
     const dt = ts - start;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
