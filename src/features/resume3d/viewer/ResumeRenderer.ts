@@ -31,7 +31,10 @@ export class ResumeRenderer {
   private readonly pointers = new Map<number, Pointer>();
   private readonly matcapTexture: THREE.Texture;
   private readonly loader: GLTFLoader;
-  private readonly materialByColor = new Map<string, THREE.MeshMatcapMaterial>();
+  private readonly materialByColor = new Map<
+    string,
+    THREE.MeshMatcapMaterial
+  >();
   private readonly resizeObserver: ResizeObserver;
   private animationFrame: number | null = null;
   private pinchStartDistance: number | null = null;
@@ -40,9 +43,10 @@ export class ResumeRenderer {
   constructor(opts: ResumeRendererOptions) {
     this.opts = opts;
     this.canvas = opts.canvas;
-    const rendererFactory = opts.rendererFactory ?? ((canvasEl: HTMLCanvasElement) => (
-      new THREE.WebGLRenderer({ canvas: canvasEl, antialias: true })
-    ));
+    const rendererFactory =
+      opts.rendererFactory ??
+      ((canvasEl: HTMLCanvasElement) =>
+        new THREE.WebGLRenderer({ canvas: canvasEl, antialias: true }));
     this.renderer = rendererFactory(this.canvas);
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.renderer.setClearColor(0x101114, 1);
@@ -71,7 +75,7 @@ export class ResumeRenderer {
     this.bindEvents();
     this.animate();
 
-    this.loadGlb(opts.glbUrl).catch((error) => {
+    this.loadGLB(opts.glbUrl).catch((error) => {
       console.error(error);
       opts.onError?.(error);
     });
@@ -101,7 +105,11 @@ export class ResumeRenderer {
     if (!this.canvas.hasPointerCapture(event.pointerId)) {
       this.canvas.setPointerCapture(event.pointerId);
     }
-    this.pointers.set(event.pointerId, { id: event.pointerId, x: event.clientX, y: event.clientY });
+    this.pointers.set(event.pointerId, {
+      id: event.pointerId,
+      x: event.clientX,
+      y: event.clientY,
+    });
     if (this.pointers.size === 2) {
       this.pinchStartDistance = this.currentPointerDistance();
     }
@@ -122,7 +130,7 @@ export class ResumeRenderer {
       this.targetSpherical.phi = clamp(
         this.targetSpherical.phi + deltaY,
         0.3,
-        Math.PI - 0.2,
+        Math.PI - 0.2
       );
     } else if (this.pointers.size === 2 && this.pinchStartDistance) {
       const distance = this.currentPointerDistance();
@@ -131,7 +139,7 @@ export class ResumeRenderer {
         this.targetSpherical.radius = clamp(
           this.targetSpherical.radius * ratio,
           MIN_RADIUS,
-          MAX_RADIUS,
+          MAX_RADIUS
         );
         this.pinchStartDistance = distance;
       }
@@ -154,7 +162,7 @@ export class ResumeRenderer {
     this.targetSpherical.radius = clamp(
       this.targetSpherical.radius + delta,
       MIN_RADIUS,
-      MAX_RADIUS,
+      MAX_RADIUS
     );
   };
 
@@ -180,11 +188,25 @@ export class ResumeRenderer {
     this.animationFrame = requestAnimationFrame(this.animate);
 
     // Damped transition toward the target spherical values.
-    this.spherical.radius = damp(this.spherical.radius, this.targetSpherical.radius, DAMPING);
-    this.spherical.theta = dampAngle(this.spherical.theta, this.targetSpherical.theta, DAMPING);
-    this.spherical.phi = damp(this.spherical.phi, this.targetSpherical.phi, DAMPING);
+    this.spherical.radius = damp(
+      this.spherical.radius,
+      this.targetSpherical.radius,
+      DAMPING
+    );
+    this.spherical.theta = dampAngle(
+      this.spherical.theta,
+      this.targetSpherical.theta,
+      DAMPING
+    );
+    this.spherical.phi = damp(
+      this.spherical.phi,
+      this.targetSpherical.phi,
+      DAMPING
+    );
 
-    const position = new THREE.Vector3().setFromSpherical(this.spherical).add(this.controlsTarget);
+    const position = new THREE.Vector3()
+      .setFromSpherical(this.spherical)
+      .add(this.controlsTarget);
     this.camera.position.copy(position);
     this.camera.lookAt(this.controlsTarget);
 
@@ -192,7 +214,7 @@ export class ResumeRenderer {
     this.opts.onStats?.(this.renderer.info); // developer hook
   };
 
-  private async loadGlb(url: string) {
+  private async loadGLB(url: string) {
     const glb = await this.loader.loadAsync(url);
 
     this.root.clear();
@@ -225,14 +247,20 @@ export class ResumeRenderer {
   }
 
   private applyMaterial(mesh: THREE.Mesh) {
-    const colorData = mesh.userData?.lineColor as [number, number, number] | undefined;
+    const colorData = mesh.userData?.lineColor as
+      | [number, number, number]
+      | undefined;
     if (colorData && Array.isArray(colorData)) {
       const key = colorData.join("-");
       let material = this.materialByColor.get(key);
       if (!material) {
         material = new THREE.MeshMatcapMaterial({
           matcap: this.matcapTexture,
-          color: new THREE.Color(colorData[0] / 255, colorData[1] / 255, colorData[2] / 255),
+          color: new THREE.Color(
+            colorData[0] / 255,
+            colorData[1] / 255,
+            colorData[2] / 255
+          ),
         });
         material.name = `Matcap_${this.materialByColor.size}`;
         this.materialByColor.set(key, material);
@@ -279,7 +307,14 @@ function createDefaultMatcapTexture(): THREE.Texture {
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("Matcap canvas context unavailable");
 
-  const gradient = ctx.createRadialGradient(size * 0.3, size * 0.3, size * 0.2, size * 0.7, size * 0.7, size * 0.75);
+  const gradient = ctx.createRadialGradient(
+    size * 0.3,
+    size * 0.3,
+    size * 0.2,
+    size * 0.7,
+    size * 0.7,
+    size * 0.75
+  );
   gradient.addColorStop(0, "#f6f6f6");
   gradient.addColorStop(0.5, "#b5bcc6");
   gradient.addColorStop(1, "#3a3f49");
@@ -298,7 +333,10 @@ function damp(current: number, target: number, lambda: number) {
 }
 
 function dampAngle(current: number, target: number, lambda: number) {
-  return current + THREE.MathUtils.damp(0, normalizeAngle(target - current), lambda, 1 / 60);
+  return (
+    current +
+    THREE.MathUtils.damp(0, normalizeAngle(target - current), lambda, 1 / 60)
+  );
 }
 
 function normalizeAngle(angle: number) {

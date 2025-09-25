@@ -4,8 +4,8 @@ import { loadDefaultFont } from "../../../features/resume3d/fonts/defaultFont.ts
 import { averageColor } from "../../../features/resume3d/pipeline/colorSampler.ts";
 import type { RGB } from "../../../features/resume3d/pipeline/colorSampler.ts";
 import { buildLineMesh } from "../../../features/resume3d/pipeline/buildLineMesh.ts";
-import { exportLinesToGlb } from "../../../features/resume3d/pipeline/glbExporter.ts";
-import type { LineMeshInput } from "../../../features/resume3d/pipeline/glbExporter.ts";
+import { exportLinesToGLB } from "../../../features/resume3d/pipeline/GLBExporter.ts";
+import type { LineMeshInput } from "../../../features/resume3d/pipeline/GLBExporter.ts";
 import {
   createOrientedBitmap,
   readOrientation,
@@ -39,7 +39,7 @@ type TesseractModule = {
   recognize: (
     image: HTMLCanvasElement,
     langs: string,
-    options?: { logger?: (payload: TesseractLoggerPayload) => void },
+    options?: { logger?: (payload: TesseractLoggerPayload) => void }
   ) => Promise<TesseractRecognition>;
 };
 
@@ -53,92 +53,89 @@ type PipelineStage =
 
 const DEFAULT_IMAGE_PATH = "/.local/dev-resume.png";
 
-export default function OcrToGlb() {
+export default function OcrToGLB() {
   const [lines, setLines] = useState<RecognizedLine[]>([]);
   const [stage, setStage] = useState<PipelineStage>({ stage: "idle" });
   const [error, setError] = useState<string | null>(null);
-  const handleFile = useCallback(
-    async (file: File) => {
-      setError(null);
-      setLines([]);
-      setStage({ stage: "loading", detail: file.name });
-      try {
-        const orientation = await readOrientation(file);
-        const { canvas, width, height } = await createOrientedBitmap(file, orientation);
-        const ctx = canvas.getContext("2d");
-        if (!ctx) throw new Error("2D context unavailable");
+  const handleFile = useCallback(async (file: File) => {
+    setError(null);
+    setLines([]);
+    setStage({ stage: "loading", detail: file.name });
+    try {
+      const orientation = await readOrientation(file);
+      const { canvas, width, height } = await createOrientedBitmap(
+        file,
+        orientation
+      );
+      const ctx = canvas.getContext("2d");
+      if (!ctx) throw new Error("2D context unavailable");
 
-        setStage({ stage: "ocr", progress: 0 });
-        const { recognize } = (await import("tesseract.js")) as TesseractModule;
-        const result = await recognize(canvas, "eng", {
-          logger: ({ progress, status }) => {
-            if (status === "recognizing text") {
-              setStage({ stage: "ocr", progress });
-            }
-          },
-        });
+      setStage({ stage: "ocr", progress: 0 });
+      const { recognize } = (await import("tesseract.js")) as TesseractModule;
+      const result = await recognize(canvas, "eng", {
+        logger: ({ progress, status }) => {
+          if (status === "recognizing text") {
+            setStage({ stage: "ocr", progress });
+          }
+        },
+      });
 
-        const recognized: RecognizedLine[] = (result.data.lines ?? [])
-          .filter((line) => line.text.trim().length > 0)
-          .map((line) => ({
+      const recognized: RecognizedLine[] = (result.data.lines ?? [])
+        .filter((line) => line.text.trim().length > 0)
+        .map((line) => ({
+          text: line.text,
+          bbox: line.bbox,
+          confidence: line.confidence ?? 0,
+        }));
+
+      setLines(recognized);
+
+      setStage({ stage: "building" });
+      const font = await loadDefaultFont();
+      const lineMeshes: LineMeshInput[] = recognized.map((line) => {
+        const bounds = line.bbox;
+        const rect = {
+          x: bounds.x0,
+          y: bounds.y0,
+          width: bounds.x1 - bounds.x0,
+          height: bounds.y1 - bounds.y0,
+        };
+        const color = averageColor(ctx, rect) as RGB;
+        const mesh = buildLineMesh(
+          {
             text: line.text,
-            bbox: line.bbox,
-            confidence: line.confidence ?? 0,
-          }));
-
-        setLines(recognized);
-
-        setStage({ stage: "building" });
-        const font = await loadDefaultFont();
-        const lineMeshes: LineMeshInput[] = recognized.map((line) => {
-          const bounds = line.bbox;
-          const rect = {
-            x: bounds.x0,
-            y: bounds.y0,
-            width: bounds.x1 - bounds.x0,
-            height: bounds.y1 - bounds.y0,
-          };
-          const color = averageColor(ctx, rect) as RGB;
-          const mesh = buildLineMesh(
-            {
-              text: line.text,
-              bounds: {
-                left: rect.x,
-                right: rect.x + rect.width,
-                top: rect.y,
-                bottom: rect.y + rect.height,
-              },
+            bounds: {
+              left: rect.x,
+              right: rect.x + rect.width,
+              top: rect.y,
+              bottom: rect.y + rect.height,
             },
-            {
-              font,
-              imageWidth: width,
-              imageHeight: height,
-              scale: 0.012,
-              fontSize: 24,
-              depth: 2,
-            },
-          );
-          return {
-            mesh,
-            color,
-          };
-        });
-
-        setStage({ stage: "export" });
-        const blob = await exportLinesToGlb(
-          lineMeshes,
-          { binary: true },
+          },
+          {
+            font,
+            imageWidth: width,
+            imageHeight: height,
+            scale: 0.012,
+            fontSize: 24,
+            depth: 2,
+          }
         );
+        return {
+          mesh,
+          color,
+        };
+      });
 
-        setStage({ stage: "done", blob });
-      } catch (err) {
-        console.error(err);
-        setError(err instanceof Error ? err.message : String(err));
-        setStage({ stage: "idle" });
-      }
-    },
-    [],
-  );
+      setStage({ stage: "export" });
+      const blob = await exportLinesToGLB(lineMeshes, { binary: true });
+
+      setStage({ stage: "done", blob });
+    } catch (err) {
+      console.error(err);
+      setError(err instanceof Error ? err.message : String(err));
+      setStage({ stage: "idle" });
+    }
+  }, []);
 
   const downloadUrl = useMemo(() => {
     if (stage.stage !== "done") return null;
@@ -155,7 +152,8 @@ export default function OcrToGlb() {
     try {
       setStage({ stage: "loading", detail: "default" });
       const response = await fetch(DEFAULT_IMAGE_PATH);
-      if (!response.ok) throw new Error(`Failed to fetch ${DEFAULT_IMAGE_PATH}`);
+      if (!response.ok)
+        throw new Error(`Failed to fetch ${DEFAULT_IMAGE_PATH}`);
       const blob = await response.blob();
       await handleFile(new File([blob], "dev-resume.png", { type: blob.type }));
     } catch (err) {
@@ -167,8 +165,13 @@ export default function OcrToGlb() {
   return (
     <Page>
       <h1>Image → OCR → 3D text → GLB</h1>
-      <p>This tool stays in dev builds; use it to convert a résumé snapshot into geometry.</p>
-      <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginBottom: 24 }}>
+      <p>
+        This tool stays in dev builds; use it to convert a résumé snapshot into
+        geometry.
+      </p>
+      <div
+        style={{ display: "flex", gap: 16, flexWrap: "wrap", marginBottom: 24 }}
+      >
         <label style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           <span>Select PNG/JPG</span>
           <input
@@ -180,7 +183,10 @@ export default function OcrToGlb() {
             }}
           />
         </label>
-        <button type="button" onClick={() => triggerDefault().catch(console.error)}>
+        <button
+          type="button"
+          onClick={() => triggerDefault().catch(console.error)}
+        >
           Use /.local/dev-resume.png
         </button>
         {downloadUrl && (

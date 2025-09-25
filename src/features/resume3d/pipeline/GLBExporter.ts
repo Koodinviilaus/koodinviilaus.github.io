@@ -14,9 +14,9 @@ export type ExportOptions = {
 
 export const DEFAULT_BANNED_STRINGS = ["resume", "curriculum", "vitae"];
 
-export async function exportLinesToGlb(
+export async function exportLinesToGLB(
   lines: LineMeshInput[],
-  options: ExportOptions = {},
+  options: ExportOptions = {}
 ): Promise<Blob> {
   if (!lines.length) throw new Error("No line meshes provided");
 

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { FontLoader } from "three/examples/jsm/loaders/FontLoader.js";
 import { buildLineMesh } from "../buildLineMesh.ts";
-import { exportLinesToGlb, DEFAULT_BANNED_STRINGS } from "../glbExporter.ts";
+import { exportLinesToGLB, DEFAULT_BANNED_STRINGS } from "../GLBExporter.ts";
 import fontJson from "../../../../assets/fonts/helvetiker_regular.typeface.json?raw";
 
 function loadFont() {
@@ -23,13 +23,12 @@ describe("GLB export", () => {
         imageHeight: 1200,
         fontSize: 24,
         depth: 2,
-      },
+      }
     );
 
-    const blob = await exportLinesToGlb(
-      [{ mesh, color: [64, 128, 192] }],
-      { binary: false },
-    );
+    const blob = await exportLinesToGLB([{ mesh, color: [64, 128, 192] }], {
+      binary: false,
+    });
 
     const exported = await new Response(blob).text();
     const lower = exported.toLowerCase();

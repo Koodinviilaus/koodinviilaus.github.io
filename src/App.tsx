@@ -7,7 +7,7 @@ import Home from "./pages/Home/Home.tsx";
 const devRoutes: Array<{ path: string; element: JSX.Element }> = [];
 
 if (import.meta.env.DEV) {
-  const DevOcr = lazy(() => import("./pages/Dev/OcrToGlb/OcrToGlb.tsx"));
+  const DevOcr = lazy(() => import("./pages/Dev/OcrToGLB/OcrToGLB.tsx"));
   devRoutes.push({
     path: "#/dev/glb",
     element: (

@@ -1,15 +1,16 @@
 import Page from "../../components/Page.tsx";
 import ResumeViewer from "../../features/resume3d/viewer/ResumeViewer.tsx";
-import { resolveResumeGlbUrl } from "../../features/resume3d/viewer/viewerConfig.ts";
+import { resolveResumeGLBUrl } from "../../features/resume3d/viewer/viewerConfig.ts";
 
 export default function Home() {
-  const glbUrl = resolveResumeGlbUrl();
+  const glbUrl = resolveResumeGLBUrl();
   return (
     <Page>
       <header style={{ marginBottom: 24 }}>
         <h1 style={{ margin: "0 0 8px" }}>3D Resume</h1>
         <p style={{ margin: 0 }}>
-          Drag to rotate, pinch or wheel to zoom. All résumé data lives inside the GLB geometry.
+          Drag to rotate, pinch or wheel to zoom. All résumé data lives inside
+          the GLB geometry.
         </p>
       </header>
       <ResumeViewer glbUrl={glbUrl} />
