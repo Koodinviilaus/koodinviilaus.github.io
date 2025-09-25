@@ -26,6 +26,8 @@ export function buildLineMesh(
     geometry,
     new THREE.MeshBasicMaterial(),
   );
+  const appliedScale = options.scale ?? 1;
+  mesh.scale.set(appliedScale, appliedScale, appliedScale * 6);
   placeLineMesh(mesh, line.bounds, {
     width: options.imageWidth,
     height: options.imageHeight,

@@ -38,6 +38,7 @@ export class ResumeRenderer {
     THREE.MeshMatcapMaterial
   >();
   private readonly resizeObserver: ResizeObserver;
+  private paper: THREE.Mesh | null = null;
   private animationFrame: number | null = null;
   private pinchStartDistance: number | null = null;
   private disposed = false;
@@ -51,14 +52,16 @@ export class ResumeRenderer {
         new THREE.WebGLRenderer({ canvas: canvasEl, antialias: true }));
     this.renderer = rendererFactory(this.canvas);
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    this.renderer.setClearColor(0x101114, 1);
+    this.renderer.setClearColor(0xf5f4f0, 1);
 
     this.scene = new THREE.Scene();
-    this.scene.add(new THREE.AmbientLight(0xffffff, 0.9));
+    this.scene.background = new THREE.Color(0xf6f5f2);
+    this.scene.add(new THREE.AmbientLight(0xffffff, 0.82));
 
-    const keyLight = new THREE.DirectionalLight(0xffffff, 0.6);
+    const keyLight = new THREE.DirectionalLight(0xffffff, 0.55);
     keyLight.position.set(200, 260, 200);
     this.scene.add(keyLight);
+    this.scene.add(new THREE.HemisphereLight(0xf8f6f3, 0xcac7c1, 0.4));
 
     this.camera = new THREE.PerspectiveCamera(45, 1, 0.1, 1000);
     this.controlsTarget = new THREE.Vector3();
@@ -221,6 +224,10 @@ export class ResumeRenderer {
     const glTF = await this.loader.loadAsync(url);
 
     this.root.clear();
+    if (this.paper) {
+      disposeMesh(this.paper);
+      this.paper = null;
+    }
     this.materialByColor.clear();
 
     const meshes: THREE.Mesh[] = [];
@@ -235,16 +242,35 @@ export class ResumeRenderer {
       }
     });
 
-    this.root.add(glTF.scene);
-
     if (meshes.length) {
       const box = new THREE.Box3().setFromObject(glTF.scene);
       box.getCenter(this.controlsTarget);
-      const size = box.getSize(new THREE.Vector3()).length();
-      const radius = clamp(size * 0.9, 40, 260);
+      const dimensions = box.getSize(new THREE.Vector3());
+      const radius = clamp(dimensions.length() * 0.9, 40, 260);
       this.spherical.radius = radius;
       this.targetSpherical.radius = radius;
+
+      const paper = new THREE.Mesh(
+        new THREE.PlaneGeometry(dimensions.x * 1.1, dimensions.y * 1.1),
+        new THREE.MeshStandardMaterial({
+          color: 0xf8f6f0,
+          metalness: 0.05,
+          roughness: 0.95,
+          side: THREE.DoubleSide,
+        }),
+      );
+      paper.name = "PaperBackdrop";
+      paper.position.set(
+        this.controlsTarget.x,
+        this.controlsTarget.y,
+        box.min.z - Math.max(2, dimensions.z * 0.2),
+      );
+      paper.renderOrder = -1;
+      this.paper = paper;
+      this.root.add(paper);
     }
+
+    this.root.add(glTF.scene);
 
     this.opts.onLoaded?.();
   }
@@ -286,6 +312,10 @@ export class ResumeRenderer {
     if (this.animationFrame !== null) cancelAnimationFrame(this.animationFrame);
     this.unbindEvents();
     this.renderer.dispose();
+    if (this.paper) {
+      disposeMesh(this.paper);
+      this.paper = null;
+    }
     this.materialByColor.forEach((material) => material.dispose());
     this.matcapTexture.dispose();
     this.resizeObserver.disconnect();
@@ -299,6 +329,16 @@ export class ResumeRenderer {
       pointerCount: this.pointers.size,
       drawCalls: this.renderer.info.render.calls,
     };
+  }
+}
+
+function disposeMesh(mesh: THREE.Mesh) {
+  mesh.geometry.dispose();
+  const mat = mesh.material;
+  if (Array.isArray(mat)) {
+    mat.forEach((entry) => entry.dispose());
+  } else {
+    mat.dispose();
   }
 }
 
