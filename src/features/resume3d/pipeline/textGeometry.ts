@@ -1,4 +1,4 @@
-import * as THREE from "three";
+import { Vector3, Mesh } from "three";
 import { TextGeometry } from "three/examples/jsm/geometries/TextGeometry.js";
 import type { Font } from "three/examples/jsm/loaders/FontLoader.js";
 
@@ -27,7 +27,7 @@ const DEFAULT_CURVE_SEGMENTS = 6;
 
 export function createTextLineGeometry(
   line: TextLineDefinition,
-  opts: LineGeometryOptions,
+  opts: LineGeometryOptions
 ): TextGeometry {
   const {
     font,
@@ -55,7 +55,7 @@ export function createTextLineGeometry(
   // Center geometry around its origin — simplifies downstream placement.
   const bbox = geometry.boundingBox;
   if (bbox) {
-    const offset = new THREE.Vector3();
+    const offset = new Vector3();
     bbox.getCenter(offset).negate();
     geometry.translate(offset.x, offset.y, offset.z);
   }
@@ -64,9 +64,9 @@ export function createTextLineGeometry(
 }
 
 export function placeLineMesh(
-  mesh: THREE.Mesh,
+  mesh: Mesh,
   bounds: TextLineBounds,
-  layout: { width: number; height: number; scale?: number; zOffset?: number },
+  layout: { width: number; height: number; scale?: number; zOffset?: number }
 ) {
   const { width, height, scale = 0.01, zOffset = 0 } = layout;
   const centerX = (bounds.left + bounds.right) / 2;
@@ -82,7 +82,12 @@ export type BannedStringScanOptions = {
   banned: string[];
 };
 
-export function scanForBannedStrings(input: string, opts: BannedStringScanOptions): string[] {
+export function scanForBannedStrings(
+  input: string,
+  opts: BannedStringScanOptions
+): string[] {
   const lowered = input.toLowerCase();
-  return opts.banned.filter((needle) => needle && lowered.includes(needle.toLowerCase()));
+  return opts.banned.filter(
+    (needle) => needle && lowered.includes(needle.toLowerCase())
+  );
 }

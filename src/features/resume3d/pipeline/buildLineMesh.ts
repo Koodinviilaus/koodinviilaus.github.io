@@ -1,7 +1,11 @@
-import * as THREE from "three";
+import { Mesh, MeshBasicMaterial, Material } from "three";
 import type { Font } from "three/examples/jsm/loaders/FontLoader.js";
 import type { TextGeometry } from "three/examples/jsm/geometries/TextGeometry.js";
-import { createTextLineGeometry, placeLineMesh, type TextLineDefinition } from "./textGeometry.ts";
+import {
+  createTextLineGeometry,
+  placeLineMesh,
+  type TextLineDefinition,
+} from "./textGeometry.ts";
 
 export type CreateLineMeshOptions = {
   font: Font;
@@ -17,8 +21,8 @@ export type CreateLineMeshOptions = {
 
 export function buildLineMesh(
   line: TextLineDefinition,
-  options: CreateLineMeshOptions,
-): THREE.Mesh<TextGeometry, THREE.Material | THREE.Material[]> {
+  options: CreateLineMeshOptions
+): Mesh<TextGeometry, Material | Material[]> {
   const geometry = createTextLineGeometry(line, {
     font: options.font,
     extrudeDepth: options.depth,
@@ -26,14 +30,14 @@ export function buildLineMesh(
     curveSegments: options.curveSegments,
   });
 
-  const mesh = new THREE.Mesh<TextGeometry, THREE.Material | THREE.Material[]>(
+  const mesh = new Mesh<TextGeometry, Material | Material[]>(
     geometry,
-    new THREE.MeshBasicMaterial(),
+    new MeshBasicMaterial()
   );
   mesh.scale.set(
     options.scale,
     options.scale,
-    options.scale * options.depthScaleMultiplier,
+    options.scale * options.depthScaleMultiplier
   );
   placeLineMesh(mesh, line.bounds, {
     width: options.imageWidth,

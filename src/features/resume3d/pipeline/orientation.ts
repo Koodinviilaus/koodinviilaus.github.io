@@ -1,9 +1,9 @@
-import { orientation, parse } from "exifr";
 
 export type Orientation = number | undefined;
 
 export async function readOrientation(file: File): Promise<Orientation> {
   try {
+    const { orientation, parse } = await import("exifr");
     if (orientation) {
       return await orientation(file);
     }

@@ -1,10 +1,10 @@
-import * as THREE from "three";
+import { Material, Group, MeshStandardMaterial, Mesh } from "three";
 import { GLTFExporter } from "three/examples/jsm/exporters/GLTFExporter.js";
 import type { TextGeometry } from "three/examples/jsm/geometries/TextGeometry.js";
 import type { RGB } from "./colorSampler.ts";
 
 export type LineMeshInput = {
-  mesh: THREE.Mesh<TextGeometry, THREE.Material | THREE.Material[]>;
+  mesh: Mesh<TextGeometry, Material | Material[]>;
   color: RGB;
 };
 
@@ -16,15 +16,15 @@ export const DEFAULT_BANNED_STRINGS = ["resume", "curriculum", "vitae"];
 
 export async function exportLinesToGLB(
   lines: LineMeshInput[],
-  options: ExportOptions = {},
+  options: ExportOptions = {}
 ): Promise<Blob> {
   if (!lines.length) throw new Error("No line meshes provided");
 
-  const scene = new THREE.Group();
+  const scene = new Group();
   scene.name = "GeometryRoot";
 
   // All line meshes share one material to keep draw calls predictable on mobile GPUs.
-  const material = new THREE.MeshStandardMaterial({
+  const material = new MeshStandardMaterial({
     color: 0xffffff,
     metalness: 0.2,
     roughness: 0.7,

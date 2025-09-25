@@ -15,7 +15,6 @@ import {
 } from "../../../features/resume3d/pipeline/orientation.ts";
 import Page from "../../../components/Page.tsx";
 import { RESUME_PIPELINE_CONFIG } from "../../../features/resume3d/config.ts";
-import { recognize } from "tesseract.js";
 
 type RecognizedLine = {
   text: string;
@@ -69,6 +68,7 @@ export default function OcrToGLB() {
       setStage({ stage: "loading", detail: file.name });
 
       try {
+        const { recognize } = await import("tesseract.js");
         const orientation = await readOrientation(file);
         const { canvas, width, height } = await createOrientedBitmap(
           file,

@@ -1,14 +1,25 @@
-import * as THREE from "three";
-import type { GLTF, GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
+import {
+  Group,
+  Mesh,
+  BoxGeometry,
+  MeshBasicMaterial,
+  WebGLRenderer,
+  Texture,
+  type WebGLInfo,
+} from "three";
+import type {
+  GLTF,
+  GLTFLoader,
+} from "three/examples/jsm/loaders/GLTFLoader.js";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ResumeRenderer } from "../ResumeRenderer.ts";
 
 class WebGLRendererStub {
-  readonly info: THREE.WebGLInfo;
+  readonly info: WebGLInfo;
   private readonly infoData = { render: { calls: 0 } };
 
   constructor() {
-    this.info = this.infoData as unknown as THREE.WebGLInfo;
+    this.info = this.infoData as unknown as WebGLInfo;
   }
 
   setPixelRatio() {}
@@ -46,23 +57,36 @@ describe("ResumeRenderer", () => {
         toJSON: () => ({}),
       } as DOMRect);
 
-    const originalRaf = globalThis.requestAnimationFrame ?? ((): typeof requestAnimationFrame => {
-      return ((callback: FrameRequestCallback) => setTimeout(() => callback(performance.now()), 16) as unknown as number);
-    })();
-    const originalCaf = globalThis.cancelAnimationFrame ?? ((): typeof cancelAnimationFrame => {
-      return ((handle: number) => clearTimeout(handle)) as typeof cancelAnimationFrame;
-    })();
+    const originalRaf =
+      globalThis.requestAnimationFrame ??
+      ((): typeof requestAnimationFrame => {
+        return (callback: FrameRequestCallback) =>
+          setTimeout(
+            () => callback(performance.now()),
+            16
+          ) as unknown as number;
+      })();
+    const originalCaf =
+      globalThis.cancelAnimationFrame ??
+      ((): typeof cancelAnimationFrame => {
+        return ((handle: number) =>
+          clearTimeout(handle)) as typeof cancelAnimationFrame;
+      })();
     globalThis.requestAnimationFrame = ((callback: FrameRequestCallback) =>
-      setTimeout(() => callback(performance.now()), 16) as unknown as number) as typeof requestAnimationFrame;
-    globalThis.cancelAnimationFrame = ((handle: number) => clearTimeout(handle)) as typeof cancelAnimationFrame;
+      setTimeout(
+        () => callback(performance.now()),
+        16
+      ) as unknown as number) as typeof requestAnimationFrame;
+    globalThis.cancelAnimationFrame = ((handle: number) =>
+      clearTimeout(handle)) as typeof cancelAnimationFrame;
 
     const rendererStub = new WebGLRendererStub();
     const loaderStub: Pick<GLTFLoader, "loadAsync"> = {
       loadAsync: vi.fn(async (): Promise<GLTF> => {
-        const group = new THREE.Group();
-        const mesh = new THREE.Mesh(
-          new THREE.BoxGeometry(10, 2, 0.6),
-          new THREE.MeshBasicMaterial(),
+        const group = new Group();
+        const mesh = new Mesh(
+          new BoxGeometry(10, 2, 0.6),
+          new MeshBasicMaterial()
         );
         mesh.userData.lineColor = [64, 96, 160];
         group.add(mesh);
@@ -74,9 +98,9 @@ describe("ResumeRenderer", () => {
     const renderer = new ResumeRenderer({
       canvas,
       resumeGLBUrl: "stub.glb",
-      rendererFactory: () => rendererStub as unknown as THREE.WebGLRenderer,
+      rendererFactory: () => rendererStub as unknown as WebGLRenderer,
       loaderFactory: () => loaderStub as GLTFLoader,
-      matcapFactory: () => new THREE.Texture(),
+      matcapFactory: () => new Texture(),
       onStats: (info) => {
         lastDrawCalls = info.render.calls;
       },
@@ -87,13 +111,28 @@ describe("ResumeRenderer", () => {
     const initial = renderer.getDebugState();
 
     canvas.dispatchEvent(
-      new PointerEvent("pointerdown", { pointerId: 1, clientX: 160, clientY: 160, bubbles: true }),
+      new PointerEvent("pointerdown", {
+        pointerId: 1,
+        clientX: 160,
+        clientY: 160,
+        bubbles: true,
+      })
     );
     canvas.dispatchEvent(
-      new PointerEvent("pointermove", { pointerId: 1, clientX: 200, clientY: 200, bubbles: true }),
+      new PointerEvent("pointermove", {
+        pointerId: 1,
+        clientX: 200,
+        clientY: 200,
+        bubbles: true,
+      })
     );
     canvas.dispatchEvent(
-      new PointerEvent("pointerup", { pointerId: 1, clientX: 200, clientY: 200, bubbles: true }),
+      new PointerEvent("pointerup", {
+        pointerId: 1,
+        clientX: 200,
+        clientY: 200,
+        bubbles: true,
+      })
     );
 
     await vi.advanceTimersByTimeAsync(32);
@@ -101,22 +140,52 @@ describe("ResumeRenderer", () => {
     expect(rotated.theta).not.toBe(initial.theta);
 
     canvas.dispatchEvent(
-      new PointerEvent("pointerdown", { pointerId: 1, clientX: 150, clientY: 150, bubbles: true }),
+      new PointerEvent("pointerdown", {
+        pointerId: 1,
+        clientX: 150,
+        clientY: 150,
+        bubbles: true,
+      })
     );
     canvas.dispatchEvent(
-      new PointerEvent("pointerdown", { pointerId: 2, clientX: 210, clientY: 150, bubbles: true }),
+      new PointerEvent("pointerdown", {
+        pointerId: 2,
+        clientX: 210,
+        clientY: 150,
+        bubbles: true,
+      })
     );
     canvas.dispatchEvent(
-      new PointerEvent("pointermove", { pointerId: 1, clientX: 140, clientY: 150, bubbles: true }),
+      new PointerEvent("pointermove", {
+        pointerId: 1,
+        clientX: 140,
+        clientY: 150,
+        bubbles: true,
+      })
     );
     canvas.dispatchEvent(
-      new PointerEvent("pointermove", { pointerId: 2, clientX: 240, clientY: 150, bubbles: true }),
+      new PointerEvent("pointermove", {
+        pointerId: 2,
+        clientX: 240,
+        clientY: 150,
+        bubbles: true,
+      })
     );
     canvas.dispatchEvent(
-      new PointerEvent("pointerup", { pointerId: 2, clientX: 240, clientY: 150, bubbles: true }),
+      new PointerEvent("pointerup", {
+        pointerId: 2,
+        clientX: 240,
+        clientY: 150,
+        bubbles: true,
+      })
     );
     canvas.dispatchEvent(
-      new PointerEvent("pointerup", { pointerId: 1, clientX: 140, clientY: 150, bubbles: true }),
+      new PointerEvent("pointerup", {
+        pointerId: 1,
+        clientX: 140,
+        clientY: 150,
+        bubbles: true,
+      })
     );
 
     await vi.advanceTimersByTimeAsync(48);

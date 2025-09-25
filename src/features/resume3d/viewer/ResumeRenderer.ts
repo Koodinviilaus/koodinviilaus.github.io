@@ -1,4 +1,26 @@
-import * as THREE from "three";
+import {
+  MathUtils,
+  WebGLRenderer,
+  Texture,
+  PerspectiveCamera,
+  Scene,
+  Group,
+  Vector3,
+  Spherical,
+  MeshMatcapMaterial,
+  Mesh,
+  Color,
+  AmbientLight,
+  DirectionalLight,
+  HemisphereLight,
+  Box3,
+  PlaneGeometry,
+  MeshStandardMaterial,
+  DoubleSide,
+  CanvasTexture,
+  SRGBColorSpace,
+  type WebGLInfo,
+} from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { RESUME_VIEWER_CONFIG } from "../config.ts";
 
@@ -9,10 +31,10 @@ export type ResumeRendererOptions = {
   resumeGLBUrl: string;
   onLoaded?: () => void;
   onError?: (error: unknown) => void;
-  onStats?: (stats: THREE.WebGLInfo) => void;
-  rendererFactory?: (canvas: HTMLCanvasElement) => THREE.WebGLRenderer;
+  onStats?: (stats: WebGLInfo) => void;
+  rendererFactory?: (canvas: HTMLCanvasElement) => WebGLRenderer;
   loaderFactory?: () => GLTFLoader;
-  matcapFactory?: () => THREE.Texture;
+  matcapFactory?: () => Texture;
 };
 
 const {
@@ -33,22 +55,19 @@ const POLAR_MAX = Math.PI - 0.2;
 export class ResumeRenderer {
   private readonly opts: ResumeRendererOptions;
   private readonly canvas: HTMLCanvasElement;
-  private readonly renderer: THREE.WebGLRenderer;
-  private readonly camera: THREE.PerspectiveCamera;
-  private readonly scene: THREE.Scene;
-  private readonly root: THREE.Group;
-  private readonly controlsTarget: THREE.Vector3;
-  private readonly spherical: THREE.Spherical;
-  private readonly targetSpherical: THREE.Spherical;
+  private readonly renderer: WebGLRenderer;
+  private readonly camera: PerspectiveCamera;
+  private readonly scene: Scene;
+  private readonly root: Group;
+  private readonly controlsTarget: Vector3;
+  private readonly spherical: Spherical;
+  private readonly targetSpherical: Spherical;
   private readonly pointers = new Map<number, Pointer>();
-  private readonly matcapTexture: THREE.Texture;
+  private readonly matcapTexture: Texture;
   private readonly loader: GLTFLoader;
-  private readonly materialByColor = new Map<
-    string,
-    THREE.MeshMatcapMaterial
-  >();
+  private readonly materialByColor = new Map<string, MeshMatcapMaterial>();
   private readonly resizeObserver: ResizeObserver;
-  private paper: THREE.Mesh | null = null;
+  private paper: Mesh | null = null;
   private animationFrame: number | null = null;
   private pinchStartDistance: number | null = null;
   private disposed = false;
@@ -59,39 +78,39 @@ export class ResumeRenderer {
     const rendererFactory =
       opts.rendererFactory ??
       ((canvasEl: HTMLCanvasElement) =>
-        new THREE.WebGLRenderer({ canvas: canvasEl, antialias: true }));
+        new WebGLRenderer({ canvas: canvasEl, antialias: true }));
     this.renderer = rendererFactory(this.canvas);
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.renderer.setClearColor(RENDERER_CFG.clearColor, 1);
 
-    this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(RENDERER_CFG.backgroundColor);
-    this.scene.add(new THREE.AmbientLight(0xffffff, LIGHTING_CFG.ambientIntensity));
+    this.scene = new Scene();
+    this.scene.background = new Color(RENDERER_CFG.backgroundColor);
+    this.scene.add(new AmbientLight(0xffffff, LIGHTING_CFG.ambientIntensity));
 
-    const keyLight = new THREE.DirectionalLight(
+    const keyLight = new DirectionalLight(
       LIGHTING_CFG.directional.color,
-      LIGHTING_CFG.directional.intensity,
+      LIGHTING_CFG.directional.intensity
     );
     keyLight.position.set(
       LIGHTING_CFG.directional.position.x,
       LIGHTING_CFG.directional.position.y,
-      LIGHTING_CFG.directional.position.z,
+      LIGHTING_CFG.directional.position.z
     );
     this.scene.add(keyLight);
     this.scene.add(
-      new THREE.HemisphereLight(
+      new HemisphereLight(
         LIGHTING_CFG.hemisphere.skyColor,
         LIGHTING_CFG.hemisphere.groundColor,
-        LIGHTING_CFG.hemisphere.intensity,
-      ),
+        LIGHTING_CFG.hemisphere.intensity
+      )
     );
 
-    this.camera = new THREE.PerspectiveCamera(45, 1, 0.1, 1000);
-    this.controlsTarget = new THREE.Vector3();
-    this.spherical = new THREE.Spherical(140, Math.PI / 3, Math.PI / 4);
+    this.camera = new PerspectiveCamera(45, 1, 0.1, 1000);
+    this.controlsTarget = new Vector3();
+    this.spherical = new Spherical(140, Math.PI / 3, Math.PI / 4);
     this.targetSpherical = this.spherical.clone();
 
-    this.root = new THREE.Group();
+    this.root = new Group();
     this.scene.add(this.root);
 
     this.matcapTexture = opts.matcapFactory?.() ?? createDefaultMatcapTexture();
@@ -164,7 +183,7 @@ export class ResumeRenderer {
       this.targetSpherical.phi = clamp(
         this.targetSpherical.phi + rawDeltaY,
         POLAR_MIN,
-        POLAR_MAX,
+        POLAR_MAX
       );
     } else if (this.pointers.size === 2 && this.pinchStartDistance) {
       const distance = this.currentPointerDistance();
@@ -238,7 +257,7 @@ export class ResumeRenderer {
       DAMPING
     );
 
-    const position = new THREE.Vector3()
+    const position = new Vector3()
       .setFromSpherical(this.spherical)
       .add(this.controlsTarget);
     this.camera.position.copy(position);
@@ -258,10 +277,10 @@ export class ResumeRenderer {
     }
     this.materialByColor.clear();
 
-    const meshes: THREE.Mesh[] = [];
+    const meshes: Mesh[] = [];
     glTF.scene.traverse((child) => {
-      if (child instanceof THREE.Mesh) {
-        const mesh = child as THREE.Mesh;
+      if (child instanceof Mesh) {
+        const mesh = child as Mesh;
         mesh.castShadow = false;
         mesh.receiveShadow = false;
         this.applyMaterial(mesh);
@@ -271,33 +290,34 @@ export class ResumeRenderer {
     });
 
     if (meshes.length) {
-      const box = new THREE.Box3().setFromObject(glTF.scene);
+      const box = new Box3().setFromObject(glTF.scene);
       box.getCenter(this.controlsTarget);
-      const dimensions = box.getSize(new THREE.Vector3());
+      const dimensions = box.getSize(new Vector3());
       const radius = clamp(dimensions.length() * 0.9, 40, 260);
       this.spherical.radius = radius;
       this.targetSpherical.radius = radius;
 
-      const paper = new THREE.Mesh(
-        new THREE.PlaneGeometry(
+      const paper = new Mesh(
+        new PlaneGeometry(
           dimensions.x * PAPER_CFG.scalePadding,
-          dimensions.y * PAPER_CFG.scalePadding,
+          dimensions.y * PAPER_CFG.scalePadding
         ),
-        new THREE.MeshStandardMaterial({
+        new MeshStandardMaterial({
           color: PAPER_CFG.color,
           metalness: 0.05,
           roughness: 0.95,
-          side: THREE.DoubleSide,
-        }),
+          side: DoubleSide,
+        })
       );
       paper.name = "PaperBackdrop";
       paper.position.set(
         this.controlsTarget.x,
         this.controlsTarget.y,
-        box.min.z - Math.max(
-          PAPER_CFG.minDepthOffset,
-          dimensions.z * PAPER_CFG.depthOffsetRatio,
-        ),
+        box.min.z -
+          Math.max(
+            PAPER_CFG.minDepthOffset,
+            dimensions.z * PAPER_CFG.depthOffsetRatio
+          )
       );
       paper.renderOrder = -1;
       this.paper = paper;
@@ -309,7 +329,7 @@ export class ResumeRenderer {
     this.opts.onLoaded?.();
   }
 
-  private applyMaterial(mesh: THREE.Mesh) {
+  private applyMaterial(mesh: Mesh) {
     const colorData = mesh.userData?.lineColor as
       | [number, number, number]
       | undefined;
@@ -317,9 +337,9 @@ export class ResumeRenderer {
       const key = colorData.join("-");
       let material = this.materialByColor.get(key);
       if (!material) {
-        material = new THREE.MeshMatcapMaterial({
+        material = new MeshMatcapMaterial({
           matcap: this.matcapTexture,
-          color: new THREE.Color(
+          color: new Color(
             colorData[0] / 255,
             colorData[1] / 255,
             colorData[2] / 255
@@ -332,8 +352,8 @@ export class ResumeRenderer {
       return;
     }
 
-    if (!(mesh.material instanceof THREE.MeshMatcapMaterial)) {
-      mesh.material = new THREE.MeshMatcapMaterial({
+    if (!(mesh.material instanceof MeshMatcapMaterial)) {
+      mesh.material = new MeshMatcapMaterial({
         matcap: this.matcapTexture,
         color: 0xffffff,
       });
@@ -366,7 +386,7 @@ export class ResumeRenderer {
   }
 }
 
-function disposeMesh(mesh: THREE.Mesh) {
+function disposeMesh(mesh: Mesh) {
   mesh.geometry.dispose();
   const mat = mesh.material;
   if (Array.isArray(mat)) {
@@ -376,7 +396,7 @@ function disposeMesh(mesh: THREE.Mesh) {
   }
 }
 
-function createDefaultMatcapTexture(): THREE.Texture {
+function createDefaultMatcapTexture(): Texture {
   const size = 256;
   const canvas = document.createElement("canvas");
   canvas.width = size;
@@ -399,20 +419,20 @@ function createDefaultMatcapTexture(): THREE.Texture {
   ctx.fillStyle = gradient;
   ctx.fillRect(0, 0, size, size);
 
-  const texture = new THREE.CanvasTexture(canvas);
-  texture.colorSpace = THREE.SRGBColorSpace;
+  const texture = new CanvasTexture(canvas);
+  texture.colorSpace = SRGBColorSpace;
   texture.needsUpdate = true;
   return texture;
 }
 
 function damp(current: number, target: number, lambda: number) {
-  return THREE.MathUtils.damp(current, target, lambda, 1 / 60);
+  return MathUtils.damp(current, target, lambda, 1 / 60);
 }
 
 function dampAngle(current: number, target: number, lambda: number) {
   return (
     current +
-    THREE.MathUtils.damp(0, normalizeAngle(target - current), lambda, 1 / 60)
+    MathUtils.damp(0, normalizeAngle(target - current), lambda, 1 / 60)
   );
 }
 
