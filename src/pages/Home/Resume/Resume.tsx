@@ -1,4 +1,12 @@
+import ResumeViewer from "../../../features/resume3d/viewer/ResumeViewer.tsx";
+import Page from "../../../components/Page.tsx";
+import { resolveResumeGlbUrl } from "../../../features/resume3d/viewer/viewerConfig.ts";
+
 export default function Resume() {
-  // TODO component part of the resume here?
-  return (<p>TODO</p>);
+  const glbUrl = resolveResumeGlbUrl();
+  return (
+    <Page>
+      <ResumeViewer glbUrl={glbUrl} />
+    </Page>
+  );
 }
