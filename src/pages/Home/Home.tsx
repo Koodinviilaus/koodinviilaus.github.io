@@ -1,5 +1,5 @@
-import WIP from "../generic/WIP.tsx";
 
 export default function Home() {
-  return <WIP />;
+  // TODO render resume from here?
+  return undefined;
 }
