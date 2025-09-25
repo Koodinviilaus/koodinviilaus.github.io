@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 
 import { loadDefaultFont } from "../../../features/resume3d/fonts/defaultFont.ts";
 import { averageColor } from "../../../features/resume3d/pipeline/colorSampler.ts";
@@ -39,7 +39,7 @@ type TesseractModule = {
   recognize: (
     image: HTMLCanvasElement,
     langs: string,
-    options?: { logger?: (payload: TesseractLoggerPayload) => void }
+    options?: { logger?: (payload: TesseractLoggerPayload) => void },
   ) => Promise<TesseractRecognition>;
 };
 
@@ -53,115 +53,156 @@ type PipelineStage =
 
 const DEFAULT_IMAGE_PATH = "/.local/dev-resume.png";
 
+type DevWindow = Window & {
+  __DEV_RESUME_GLB_URL?: string;
+  __DEV_RESUME_GLB_BLOB?: Blob;
+};
+
 export default function OcrToGLB() {
   const [lines, setLines] = useState<RecognizedLine[]>([]);
   const [stage, setStage] = useState<PipelineStage>({ stage: "idle" });
   const [error, setError] = useState<string | null>(null);
-  const handleFile = useCallback(async (file: File) => {
-    setError(null);
-    setLines([]);
-    setStage({ stage: "loading", detail: file.name });
-    try {
-      const orientation = await readOrientation(file);
-      const { canvas, width, height } = await createOrientedBitmap(
-        file,
-        orientation
-      );
-      const ctx = canvas.getContext("2d");
-      if (!ctx) throw new Error("2D context unavailable");
+  const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
+  const downloadUrlRef = useRef<string | null>(null);
 
-      setStage({ stage: "ocr", progress: 0 });
-      const { recognize } = (await import("tesseract.js")) as TesseractModule;
-      const result = await recognize(canvas, "eng", {
-        logger: ({ progress, status }) => {
-          if (status === "recognizing text") {
-            setStage({ stage: "ocr", progress });
-          }
-        },
-      });
+  const resetDownloadUrl = useCallback(() => {
+    if (!downloadUrlRef.current) return;
 
-      const recognized: RecognizedLine[] = (result.data.lines ?? [])
-        .filter((line) => line.text.trim().length > 0)
-        .map((line) => ({
-          text: line.text,
-          bbox: line.bbox,
-          confidence: line.confidence ?? 0,
-        }));
-
-      setLines(recognized);
-
-      setStage({ stage: "building" });
-      const font = await loadDefaultFont();
-      const lineMeshes: LineMeshInput[] = recognized.map((line) => {
-        const bounds = line.bbox;
-        const rect = {
-          x: bounds.x0,
-          y: bounds.y0,
-          width: bounds.x1 - bounds.x0,
-          height: bounds.y1 - bounds.y0,
-        };
-        const color = averageColor(ctx, rect) as RGB;
-        const mesh = buildLineMesh(
-          {
-            text: line.text,
-            bounds: {
-              left: rect.x,
-              right: rect.x + rect.width,
-              top: rect.y,
-              bottom: rect.y + rect.height,
-            },
-          },
-          {
-            font,
-            imageWidth: width,
-            imageHeight: height,
-            scale: 0.012,
-            fontSize: 24,
-            depth: 2,
-          }
-        );
-        return {
-          mesh,
-          color,
-        };
-      });
-
-      // We export once per image to keep materials shared and mobile draw calls low.
-      setStage({ stage: "export" });
-      const blob = await exportLinesToGLB(lineMeshes, { binary: true });
-
-      setStage({ stage: "done", blob });
-    } catch (err) {
-      console.error(err);
-      setError(err instanceof Error ? err.message : String(err));
-      setStage({ stage: "idle" });
+    if (import.meta.env.DEV) {
+      const devWindow = window as DevWindow;
+      if (devWindow.__DEV_RESUME_GLB_URL === downloadUrlRef.current) {
+        delete devWindow.__DEV_RESUME_GLB_URL;
+        delete devWindow.__DEV_RESUME_GLB_BLOB;
+      }
     }
+
+    URL.revokeObjectURL(downloadUrlRef.current);
+    downloadUrlRef.current = null;
+    setDownloadUrl(null);
   }, []);
 
-  const downloadUrl = useMemo(() => {
-    if (stage.stage !== "done") return null;
-    return URL.createObjectURL(stage.blob);
-  }, [stage]);
+  const handleFile = useCallback(
+    async (file: File) => {
+      resetDownloadUrl();
+      setError(null);
+      setLines([]);
+      setStage({ stage: "loading", detail: file.name });
 
-  useEffect(() => {
-    return () => {
-      if (downloadUrl) URL.revokeObjectURL(downloadUrl);
-    };
-  }, [downloadUrl]);
+      try {
+        const orientation = await readOrientation(file);
+        const { canvas, width, height } = await createOrientedBitmap(
+          file,
+          orientation,
+        );
+        const ctx = canvas.getContext("2d");
+        if (!ctx) throw new Error("2D context unavailable");
+
+        setStage({ stage: "ocr", progress: 0 });
+        const { recognize } = (await import("tesseract.js")) as TesseractModule;
+        const result = await recognize(canvas, "eng", {
+          logger: ({ progress, status }) => {
+            if (status === "recognizing text") {
+              setStage({ stage: "ocr", progress });
+            }
+          },
+        });
+
+        const recognized: RecognizedLine[] = (result.data.lines ?? [])
+          .filter((line) => line.text.trim().length > 0)
+          .map((line) => ({
+            text: line.text,
+            bbox: line.bbox,
+            confidence: line.confidence ?? 0,
+          }));
+
+        setLines(recognized);
+
+        setStage({ stage: "building" });
+        const font = await loadDefaultFont();
+        const lineMeshes: LineMeshInput[] = recognized.map((line) => {
+          const bounds = line.bbox;
+          const rect = {
+            x: bounds.x0,
+            y: bounds.y0,
+            width: bounds.x1 - bounds.x0,
+            height: bounds.y1 - bounds.y0,
+          };
+          const color = averageColor(ctx, rect) as RGB;
+          const mesh = buildLineMesh(
+            {
+              text: line.text,
+              bounds: {
+                left: rect.x,
+                right: rect.x + rect.width,
+                top: rect.y,
+                bottom: rect.y + rect.height,
+              },
+            },
+            {
+              font,
+              imageWidth: width,
+              imageHeight: height,
+              scale: 0.012,
+              fontSize: 24,
+              depth: 2,
+            },
+          );
+          return {
+            mesh,
+            color,
+          };
+        });
+
+        setStage({ stage: "export" });
+        const blob = await exportLinesToGLB(lineMeshes, { binary: true });
+
+        const objectUrl = URL.createObjectURL(blob);
+        downloadUrlRef.current = objectUrl;
+        setDownloadUrl(objectUrl);
+
+        if (import.meta.env.DEV) {
+          const devWindow = window as DevWindow;
+          if (
+            devWindow.__DEV_RESUME_GLB_URL &&
+            devWindow.__DEV_RESUME_GLB_URL !== objectUrl
+          ) {
+            URL.revokeObjectURL(devWindow.__DEV_RESUME_GLB_URL);
+          }
+          devWindow.__DEV_RESUME_GLB_BLOB = blob;
+          devWindow.__DEV_RESUME_GLB_URL = objectUrl;
+        }
+
+        setStage({ stage: "done", blob });
+      } catch (err) {
+        resetDownloadUrl();
+        console.error(err);
+        setError(err instanceof Error ? err.message : String(err));
+        setStage({ stage: "idle" });
+      }
+    },
+    [resetDownloadUrl],
+  );
 
   const triggerDefault = useCallback(async () => {
     try {
       setStage({ stage: "loading", detail: "default" });
       const response = await fetch(DEFAULT_IMAGE_PATH);
-      if (!response.ok)
+      if (!response.ok) {
         throw new Error(`Failed to fetch ${DEFAULT_IMAGE_PATH}`);
+      }
       const blob = await response.blob();
       await handleFile(new File([blob], "dev-resume.png", { type: blob.type }));
     } catch (err) {
+      resetDownloadUrl();
       setError(err instanceof Error ? err.message : String(err));
       setStage({ stage: "idle" });
     }
-  }, [handleFile]);
+  }, [handleFile, resetDownloadUrl]);
+
+  const openInViewer = useCallback(() => {
+    if (!downloadUrl) return;
+    window.location.hash = "#/resume";
+  }, [downloadUrl]);
 
   return (
     <Page>
@@ -191,13 +232,14 @@ export default function OcrToGLB() {
           Use /.local/dev-resume.png
         </button>
         {downloadUrl && (
-          <a
-            href={downloadUrl}
-            download="resume.glb"
-            style={{ alignSelf: "center" }}
-          >
-            Download GLB
-          </a>
+          <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+            <a href={downloadUrl} download="resume.glb">
+              Download GLB
+            </a>
+            <button type="button" onClick={openInViewer}>
+              Open in resume view
+            </button>
+          </div>
         )}
       </div>
 
@@ -229,6 +271,8 @@ function StageInfo({ stage }: { stage: PipelineStage }) {
   }
   if (stage.stage === "building") return <p>Building meshes…</p>;
   if (stage.stage === "export") return <p>Exporting GLB…</p>;
-  if (stage.stage === "done") return <p>Export ready — download above.</p>;
+  if (stage.stage === "done") {
+    return <p>Export ready — download or open above.</p>;
+  }
   return null;
 }

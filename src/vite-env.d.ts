@@ -17,3 +17,12 @@ interface ImportMetaEnv {
 interface ImportMeta {
   readonly env: ImportMetaEnv;
 }
+
+declare global {
+  interface Window {
+    __DEV_RESUME_GLB_URL?: string;
+    __DEV_RESUME_GLB_BLOB?: Blob;
+  }
+}
+
+export {};
