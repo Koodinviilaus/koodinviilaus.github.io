@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
+import { RESUME_VIEWER_CONFIG } from "../config.ts";
 
 type Pointer = { id: number; x: number; y: number };
 
@@ -14,9 +15,18 @@ export type ResumeRendererOptions = {
   matcapFactory?: () => THREE.Texture;
 };
 
-const MIN_RADIUS = 20;
-const MAX_RADIUS = 400;
-const DAMPING = 0.08;
+const {
+  renderer: RENDERER_CFG,
+  lighting: LIGHTING_CFG,
+  controls: CONTROLS_CFG,
+  paper: PAPER_CFG,
+} = RESUME_VIEWER_CONFIG;
+
+const MIN_RADIUS = CONTROLS_CFG.zoom.minRadius;
+const MAX_RADIUS = CONTROLS_CFG.zoom.maxRadius;
+const DAMPING = CONTROLS_CFG.orbitDamping;
+const POLAR_MIN = 0.3;
+const POLAR_MAX = Math.PI - 0.2;
 
 // ResumeRenderer wraps the Three.js scene with unified pointer input and
 // matcap-driven shading tailored for the mobile résumé viewer.
@@ -52,16 +62,29 @@ export class ResumeRenderer {
         new THREE.WebGLRenderer({ canvas: canvasEl, antialias: true }));
     this.renderer = rendererFactory(this.canvas);
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    this.renderer.setClearColor(0xf5f4f0, 1);
+    this.renderer.setClearColor(RENDERER_CFG.clearColor, 1);
 
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0xf6f5f2);
-    this.scene.add(new THREE.AmbientLight(0xffffff, 0.82));
+    this.scene.background = new THREE.Color(RENDERER_CFG.backgroundColor);
+    this.scene.add(new THREE.AmbientLight(0xffffff, LIGHTING_CFG.ambientIntensity));
 
-    const keyLight = new THREE.DirectionalLight(0xffffff, 0.55);
-    keyLight.position.set(200, 260, 200);
+    const keyLight = new THREE.DirectionalLight(
+      LIGHTING_CFG.directional.color,
+      LIGHTING_CFG.directional.intensity,
+    );
+    keyLight.position.set(
+      LIGHTING_CFG.directional.position.x,
+      LIGHTING_CFG.directional.position.y,
+      LIGHTING_CFG.directional.position.z,
+    );
     this.scene.add(keyLight);
-    this.scene.add(new THREE.HemisphereLight(0xf8f6f3, 0xcac7c1, 0.4));
+    this.scene.add(
+      new THREE.HemisphereLight(
+        LIGHTING_CFG.hemisphere.skyColor,
+        LIGHTING_CFG.hemisphere.groundColor,
+        LIGHTING_CFG.hemisphere.intensity,
+      ),
+    );
 
     this.camera = new THREE.PerspectiveCamera(45, 1, 0.1, 1000);
     this.controlsTarget = new THREE.Vector3();
@@ -130,13 +153,18 @@ export class ResumeRenderer {
     pointer.y = event.clientY;
 
     if (this.pointers.size === 1) {
-      const deltaX = (pointer.x - prev.x) * 0.005;
-      const deltaY = (pointer.y - prev.y) * 0.005;
-      this.targetSpherical.theta -= deltaX;
+      const rawDeltaX =
+        (pointer.x - prev.x) * CONTROLS_CFG.rotationSensitivity.x;
+      const rawDeltaY =
+        (pointer.y - prev.y) * CONTROLS_CFG.rotationSensitivity.y;
+      const thetaDelta = CONTROLS_CFG.invertHorizontalDrag
+        ? rawDeltaX
+        : -rawDeltaX;
+      this.targetSpherical.theta += thetaDelta;
       this.targetSpherical.phi = clamp(
-        this.targetSpherical.phi + deltaY,
-        0.3,
-        Math.PI - 0.2
+        this.targetSpherical.phi + rawDeltaY,
+        POLAR_MIN,
+        POLAR_MAX,
       );
     } else if (this.pointers.size === 2 && this.pinchStartDistance) {
       const distance = this.currentPointerDistance();
@@ -164,7 +192,7 @@ export class ResumeRenderer {
 
   private readonly onWheel = (event: WheelEvent) => {
     event.preventDefault();
-    const delta = event.deltaY * 0.01;
+    const delta = event.deltaY * CONTROLS_CFG.zoom.deltaMultiplier;
     this.targetSpherical.radius = clamp(
       this.targetSpherical.radius + delta,
       MIN_RADIUS,
@@ -251,9 +279,12 @@ export class ResumeRenderer {
       this.targetSpherical.radius = radius;
 
       const paper = new THREE.Mesh(
-        new THREE.PlaneGeometry(dimensions.x * 1.1, dimensions.y * 1.1),
+        new THREE.PlaneGeometry(
+          dimensions.x * PAPER_CFG.scalePadding,
+          dimensions.y * PAPER_CFG.scalePadding,
+        ),
         new THREE.MeshStandardMaterial({
-          color: 0xf8f6f0,
+          color: PAPER_CFG.color,
           metalness: 0.05,
           roughness: 0.95,
           side: THREE.DoubleSide,
@@ -263,7 +294,10 @@ export class ResumeRenderer {
       paper.position.set(
         this.controlsTarget.x,
         this.controlsTarget.y,
-        box.min.z - Math.max(2, dimensions.z * 0.2),
+        box.min.z - Math.max(
+          PAPER_CFG.minDepthOffset,
+          dimensions.z * PAPER_CFG.depthOffsetRatio,
+        ),
       );
       paper.renderOrder = -1;
       this.paper = paper;

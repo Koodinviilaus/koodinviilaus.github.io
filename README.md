@@ -43,6 +43,12 @@ When the variable is omitted the viewer falls back to the bundled `public/resume
 - Pointer Events unify mouse and touch; pinch/drag/wheel are all handled in `ResumeRenderer`
 - All line meshes reuse a single material to keep draw calls stable on mid-range mobile GPUs
 
+## Tuning the experience (dev only)
+
+- `src/features/resume3d/config.ts` exposes both pipeline and viewer constants (plane width, extrusion depth, lighting, rotation/zoom sensitivities, backdrop colours). Adjust values there to instantly refine layout and shading.
+- `RESUME_PIPELINE_CONFIG` controls OCR placement math. For example, tweak `planeWidth`, `planePaddingRatio`, or `lineExtrudeDepth` to match your résumé proportions.
+- `RESUME_VIEWER_CONFIG` handles renderer colours, lighting, pointer sensitivity, and zoom bounds so you can align with portfolio branding.
+
 ## Useful scripts
 
 - `npm run dev` – run the Vite dev server

@@ -11,6 +11,8 @@ import {
   readOrientation,
 } from "../../../features/resume3d/pipeline/orientation.ts";
 import Page from "../../../components/Page.tsx";
+import { RESUME_PIPELINE_CONFIG } from "../../../features/resume3d/config.ts";
+import Tesseract from "tesseract.js";
 
 type RecognizedLine = {
   text: string;
@@ -39,9 +41,11 @@ type TesseractModule = {
   recognize: (
     image: HTMLCanvasElement,
     langs: string,
-    options?: { logger?: (payload: TesseractLoggerPayload) => void },
+    options?: { logger?: (payload: TesseractLoggerPayload) => void }
   ) => Promise<TesseractRecognition>;
 };
+
+const tesseract: TesseractModule = Tesseract;
 
 type PipelineStage =
   | { stage: "idle" }
@@ -92,13 +96,13 @@ export default function OcrToGLB() {
         const orientation = await readOrientation(file);
         const { canvas, width, height } = await createOrientedBitmap(
           file,
-          orientation,
+          orientation
         );
         const ctx = canvas.getContext("2d");
         if (!ctx) throw new Error("2D context unavailable");
 
         setStage({ stage: "ocr", progress: 0 });
-        const { recognize } = (await import("tesseract.js")) as TesseractModule;
+        const { recognize } = tesseract;
         const result = await recognize(canvas, "eng", {
           logger: ({ progress, status }) => {
             if (status === "recognizing text") {
@@ -119,7 +123,13 @@ export default function OcrToGLB() {
 
         setStage({ stage: "building" });
         const font = await loadDefaultFont();
-        const lineMeshes: LineMeshInput[] = recognized.map((line) => {
+        const safePlaneWidth =
+          RESUME_PIPELINE_CONFIG.planeWidth /
+          RESUME_PIPELINE_CONFIG.planePaddingRatio;
+        const pixelToWorld = safePlaneWidth / Math.max(1, width);
+        const zOffsetStep = RESUME_PIPELINE_CONFIG.zFightingOffset;
+
+        const lineMeshes: LineMeshInput[] = recognized.map((line, index) => {
           const bounds = line.bbox;
           const rect = {
             x: bounds.x0,
@@ -142,10 +152,13 @@ export default function OcrToGLB() {
               font,
               imageWidth: width,
               imageHeight: height,
-              scale: 0.012,
-              fontSize: 24,
-              depth: 2,
-            },
+              scale: pixelToWorld,
+              fontSize: RESUME_PIPELINE_CONFIG.fontSize,
+              depth: RESUME_PIPELINE_CONFIG.lineExtrudeDepth,
+              curveSegments: RESUME_PIPELINE_CONFIG.curveSegments,
+              zOffset: index * zOffsetStep,
+              depthScaleMultiplier: RESUME_PIPELINE_CONFIG.depthScaleMultiplier,
+            }
           );
           return {
             mesh,
@@ -180,7 +193,7 @@ export default function OcrToGLB() {
         setStage({ stage: "idle" });
       }
     },
-    [resetDownloadUrl],
+    [resetDownloadUrl]
   );
 
   const triggerDefault = useCallback(async () => {

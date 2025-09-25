@@ -7,9 +7,12 @@ export type CreateLineMeshOptions = {
   font: Font;
   imageWidth: number;
   imageHeight: number;
-  scale?: number;
-  depth?: number;
-  fontSize?: number;
+  scale: number;
+  depth: number;
+  fontSize: number;
+  curveSegments: number;
+  zOffset?: number;
+  depthScaleMultiplier: number;
 };
 
 export function buildLineMesh(
@@ -20,19 +23,23 @@ export function buildLineMesh(
     font: options.font,
     extrudeDepth: options.depth,
     fontSize: options.fontSize,
+    curveSegments: options.curveSegments,
   });
 
   const mesh = new THREE.Mesh<TextGeometry, THREE.Material | THREE.Material[]>(
     geometry,
     new THREE.MeshBasicMaterial(),
   );
-  const appliedScale = options.scale ?? 1;
-  mesh.scale.set(appliedScale, appliedScale, appliedScale * 6);
+  mesh.scale.set(
+    options.scale,
+    options.scale,
+    options.scale * options.depthScaleMultiplier,
+  );
   placeLineMesh(mesh, line.bounds, {
     width: options.imageWidth,
     height: options.imageHeight,
     scale: options.scale,
-    zOffset: 0,
+    zOffset: options.zOffset ?? 0,
   });
 
   return mesh;
