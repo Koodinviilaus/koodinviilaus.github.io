@@ -1,21 +1,46 @@
-import { useCallback, useMemo, useState } from "react";
-import * as THREE from "three";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { loadDefaultFont } from "../../../features/resume3d/fonts/defaultFont.ts";
-import { averageColor, rgbToHex } from "../../../features/resume3d/pipeline/colorSampler.ts";
+import { averageColor } from "../../../features/resume3d/pipeline/colorSampler.ts";
+import type { RGB } from "../../../features/resume3d/pipeline/colorSampler.ts";
 import { buildLineMesh } from "../../../features/resume3d/pipeline/buildLineMesh.ts";
 import { exportLinesToGlb } from "../../../features/resume3d/pipeline/glbExporter.ts";
+import type { LineMeshInput } from "../../../features/resume3d/pipeline/glbExporter.ts";
 import {
   createOrientedBitmap,
   readOrientation,
 } from "../../../features/resume3d/pipeline/orientation.ts";
-import type { TextLineDefinition } from "../../../features/resume3d/pipeline/textGeometry.ts";
 import Page from "../../../components/Page.tsx";
 
 type RecognizedLine = {
   text: string;
   bbox: { x0: number; y0: number; x1: number; y1: number };
   confidence: number;
+};
+
+type TesseractLoggerPayload = {
+  progress: number;
+  status: string;
+};
+
+type TesseractLine = {
+  text: string;
+  bbox: RecognizedLine["bbox"];
+  confidence: number;
+};
+
+type TesseractRecognition = {
+  data: {
+    lines?: TesseractLine[];
+  };
+};
+
+type TesseractModule = {
+  recognize: (
+    image: HTMLCanvasElement,
+    langs: string,
+    options?: { logger?: (payload: TesseractLoggerPayload) => void },
+  ) => Promise<TesseractRecognition>;
 };
 
 type PipelineStage =
@@ -44,8 +69,8 @@ export default function OcrToGlb() {
         if (!ctx) throw new Error("2D context unavailable");
 
         setStage({ stage: "ocr", progress: 0 });
-        const { default: Tesseract } = await import("tesseract.js");
-        const result = await Tesseract.recognize(canvas, "eng", {
+        const { recognize } = (await import("tesseract.js")) as TesseractModule;
+        const result = await recognize(canvas, "eng", {
           logger: ({ progress, status }) => {
             if (status === "recognizing text") {
               setStage({ stage: "ocr", progress });
@@ -53,9 +78,9 @@ export default function OcrToGlb() {
           },
         });
 
-        const recognized = (result.data.lines ?? [])
-          .filter((line: { text: string }) => line.text.trim().length > 0)
-          .map((line: { text: string; bbox: RecognizedLine["bbox"]; confidence: number }) => ({
+        const recognized: RecognizedLine[] = (result.data.lines ?? [])
+          .filter((line) => line.text.trim().length > 0)
+          .map((line) => ({
             text: line.text,
             bbox: line.bbox,
             confidence: line.confidence ?? 0,
@@ -65,7 +90,7 @@ export default function OcrToGlb() {
 
         setStage({ stage: "building" });
         const font = await loadDefaultFont();
-        const materialColorLines = recognized.map((line) => {
+        const lineMeshes: LineMeshInput[] = recognized.map((line) => {
           const bounds = line.bbox;
           const rect = {
             x: bounds.x0,
@@ -73,7 +98,7 @@ export default function OcrToGlb() {
             width: bounds.x1 - bounds.x0,
             height: bounds.y1 - bounds.y0,
           };
-          const color = averageColor(ctx, rect);
+          const color = averageColor(ctx, rect) as RGB;
           const mesh = buildLineMesh(
             {
               text: line.text,
@@ -94,29 +119,14 @@ export default function OcrToGlb() {
             },
           );
           return {
-            mesh: mesh as THREE.Mesh,
-            color: color as [number, number, number],
-            text: line.text,
+            mesh,
+            color,
           };
-        });
-
-        materialColorLines.forEach((entry, index) => {
-          entry.mesh.name = `Segment_${index}`;
-          entry.mesh.userData.resumeColor = entry.color;
-        });
-
-        materialColorLines.forEach((entry) => {
-          const geometry = entry.mesh.geometry as THREE.BufferGeometry & {
-            parameters?: { text?: string };
-          };
-          if (geometry.parameters?.text) {
-            geometry.parameters.text = "";
-          }
         });
 
         setStage({ stage: "export" });
         const blob = await exportLinesToGlb(
-          materialColorLines.map(({ mesh, color }) => ({ mesh, color })),
+          lineMeshes,
           { binary: true },
         );
 

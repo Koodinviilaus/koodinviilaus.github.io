@@ -1,10 +1,11 @@
 import * as THREE from "three";
 import { GLTFExporter } from "three/examples/jsm/exporters/GLTFExporter.js";
 import type { TextGeometry } from "three/examples/jsm/geometries/TextGeometry.js";
+import type { RGB } from "./colorSampler.ts";
 
 export type LineMeshInput = {
-  mesh: THREE.Mesh<TextGeometry, THREE.Material>;
-  color: [number, number, number];
+  mesh: THREE.Mesh<TextGeometry, THREE.Material | THREE.Material[]>;
+  color: RGB;
 };
 
 export type ExportOptions = {
@@ -15,12 +16,12 @@ export const DEFAULT_BANNED_STRINGS = ["resume", "curriculum", "vitae"];
 
 export async function exportLinesToGlb(
   lines: LineMeshInput[],
-  options: ExportOptions = {}
+  options: ExportOptions = {},
 ): Promise<Blob> {
   if (!lines.length) throw new Error("No line meshes provided");
 
   const scene = new THREE.Group();
-  scene.name = "Resume3D";
+  scene.name = "GeometryRoot";
 
   const material = new THREE.MeshStandardMaterial({
     color: 0xffffff,
@@ -32,7 +33,7 @@ export async function exportLinesToGlb(
   lines.forEach(({ mesh, color }, index) => {
     mesh.name = `Segment_${index}`;
     mesh.material = material;
-    mesh.userData.resumeColor = color;
+    mesh.userData.lineColor = color;
     scene.add(mesh);
   });
 

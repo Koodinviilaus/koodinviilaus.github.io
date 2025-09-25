@@ -3,17 +3,20 @@ import { averageColor, rgbToHex } from "../colorSampler.ts";
 
 describe("colorSampler", () => {
   it("returns average color for solid patch", () => {
-    const canvas = document.createElement("canvas");
-    canvas.width = 10;
-    canvas.height = 10;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) throw new Error("ctx missing");
+    const expected = [0x33, 0x66, 0x99];
+    const ctx = {
+      getImageData: () => ({
+        data: new Uint8ClampedArray([
+          ...expected,
+          255,
+          ...expected,
+          255,
+        ]),
+      }),
+    } as unknown as CanvasRenderingContext2D;
 
-    ctx.fillStyle = "#336699";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    const [r, g, b] = averageColor(ctx, { x: 0, y: 0, width: 10, height: 10 });
-    expect(r).toBeGreaterThan(0);
-    expect(rgbToHex([r, g, b]).toString(16)).toEqual((0x336699).toString(16));
+    const [r, g, b] = averageColor(ctx, { x: 0, y: 0, width: 2, height: 1 });
+    expect([r, g, b]).toEqual(expected);
+    expect(rgbToHex([r, g, b])).toBe(0x336699);
   });
 });

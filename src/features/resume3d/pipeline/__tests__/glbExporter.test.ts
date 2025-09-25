@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { FontLoader } from "three/examples/jsm/loaders/FontLoader.js";
 import { buildLineMesh } from "../buildLineMesh.ts";
 import { exportLinesToGlb, DEFAULT_BANNED_STRINGS } from "../glbExporter.ts";
-import fontJson from "../../../assets/fonts/helvetiker_regular.typeface.json?raw";
+import fontJson from "../../../../assets/fonts/helvetiker_regular.typeface.json?raw";
 
 function loadFont() {
   const loader = new FontLoader();
@@ -31,7 +31,7 @@ describe("GLB export", () => {
       { binary: false },
     );
 
-    const exported = await blob.text();
+    const exported = await new Response(blob).text();
     const lower = exported.toLowerCase();
     DEFAULT_BANNED_STRINGS.forEach((needle) => {
       expect(lower.includes(needle.toLowerCase())).toBe(false);

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { FontLoader } from "three/examples/jsm/loaders/FontLoader.js";
-import fontJson from "../../../assets/fonts/helvetiker_regular.typeface.json?raw";
+import fontJson from "../../../../assets/fonts/helvetiker_regular.typeface.json?raw";
 import { createTextLineGeometry } from "../textGeometry.ts";
 
 function loadFont() {
@@ -16,8 +16,9 @@ describe("Text geometry", () => {
       { font, extrudeDepth: 2, fontSize: 16 },
     );
 
-    expect(geometry.parameters.depth).toBeGreaterThan(0);
     expect(geometry.boundingBox).not.toBeNull();
+    const bounds = geometry.boundingBox!;
+    expect(bounds.max.z - bounds.min.z).toBeGreaterThan(0);
   });
 
   it("clears text from parameters to avoid leaks", () => {
@@ -27,7 +28,7 @@ describe("Text geometry", () => {
       { font },
     );
 
-    // @ts-expect-error Accessing internal structure for validation
-    expect(geometry.parameters.text).toBe("");
+    const serialized = JSON.stringify(geometry.toJSON()).toLowerCase();
+    expect(serialized.includes("secret")).toBe(false);
   });
 });

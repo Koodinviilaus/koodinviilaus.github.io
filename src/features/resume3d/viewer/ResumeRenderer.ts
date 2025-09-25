@@ -9,6 +9,9 @@ export type ResumeRendererOptions = {
   onLoaded?: () => void;
   onError?: (error: unknown) => void;
   onStats?: (stats: THREE.WebGLInfo) => void;
+  rendererFactory?: (canvas: HTMLCanvasElement) => THREE.WebGLRenderer;
+  loaderFactory?: () => GLTFLoader;
+  matcapFactory?: () => THREE.Texture;
 };
 
 const MIN_RADIUS = 20;
@@ -16,6 +19,7 @@ const MAX_RADIUS = 400;
 const DAMPING = 0.08;
 
 export class ResumeRenderer {
+  private readonly opts: ResumeRendererOptions;
   private readonly canvas: HTMLCanvasElement;
   private readonly renderer: THREE.WebGLRenderer;
   private readonly camera: THREE.PerspectiveCamera;
@@ -26,15 +30,20 @@ export class ResumeRenderer {
   private readonly targetSpherical: THREE.Spherical;
   private readonly pointers = new Map<number, Pointer>();
   private readonly matcapTexture: THREE.Texture;
+  private readonly loader: GLTFLoader;
   private readonly materialByColor = new Map<string, THREE.MeshMatcapMaterial>();
   private readonly resizeObserver: ResizeObserver;
   private animationFrame: number | null = null;
   private pinchStartDistance: number | null = null;
   private disposed = false;
 
-  constructor(private readonly opts: ResumeRendererOptions) {
+  constructor(opts: ResumeRendererOptions) {
+    this.opts = opts;
     this.canvas = opts.canvas;
-    this.renderer = new THREE.WebGLRenderer({ canvas: this.canvas, antialias: true });
+    const rendererFactory = opts.rendererFactory ?? ((canvasEl: HTMLCanvasElement) => (
+      new THREE.WebGLRenderer({ canvas: canvasEl, antialias: true })
+    ));
+    this.renderer = rendererFactory(this.canvas);
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.renderer.setClearColor(0x101114, 1);
 
@@ -53,7 +62,8 @@ export class ResumeRenderer {
     this.root = new THREE.Group();
     this.scene.add(this.root);
 
-    this.matcapTexture = createDefaultMatcapTexture();
+    this.matcapTexture = opts.matcapFactory?.() ?? createDefaultMatcapTexture();
+    this.loader = opts.loaderFactory?.() ?? new GLTFLoader();
 
     this.handleResize();
     this.resizeObserver = new ResizeObserver(() => this.handleResize());
@@ -183,8 +193,7 @@ export class ResumeRenderer {
   };
 
   private async loadGlb(url: string) {
-    const loader = new GLTFLoader();
-    const glb = await loader.loadAsync(url);
+    const glb = await this.loader.loadAsync(url);
 
     this.root.clear();
     this.materialByColor.clear();
@@ -216,7 +225,7 @@ export class ResumeRenderer {
   }
 
   private applyMaterial(mesh: THREE.Mesh) {
-    const colorData = mesh.userData?.resumeColor as [number, number, number] | undefined;
+    const colorData = mesh.userData?.lineColor as [number, number, number] | undefined;
     if (colorData && Array.isArray(colorData)) {
       const key = colorData.join("-");
       let material = this.materialByColor.get(key);
@@ -249,6 +258,16 @@ export class ResumeRenderer {
     this.materialByColor.forEach((material) => material.dispose());
     this.matcapTexture.dispose();
     this.resizeObserver.disconnect();
+  }
+
+  getDebugState() {
+    return {
+      radius: this.targetSpherical.radius,
+      theta: this.targetSpherical.theta,
+      phi: this.targetSpherical.phi,
+      pointerCount: this.pointers.size,
+      drawCalls: this.renderer.info.render.calls,
+    };
   }
 }
 
