@@ -1,7 +1,7 @@
 import { HashRouter } from "./router/HashRouter.tsx";
-import Profile from "./app/Home/Profile/Profile.tsx";
-import NotFound from "./app/generic/NotFound.tsx";
-import Home from "./app/Home/Home.tsx";
+import Profile from "./pages/Home/Profile/Profile.tsx";
+import NotFound from "./pages/generic/NotFound.tsx";
+import Home from "./pages/Home/Home.tsx";
 
 export default function App() {
   return (
