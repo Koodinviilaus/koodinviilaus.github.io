@@ -1,51 +1,27 @@
 import { useCallback, useRef, useState } from "react";
-
 import { loadDefaultFont } from "../../../features/resume3d/fonts/defaultFont.ts";
-import { averageColor } from "../../../features/resume3d/pipeline/colorSampler.ts";
-import type { RGB } from "../../../features/resume3d/pipeline/colorSampler.ts";
+import {
+  averageColor,
+  type RGB,
+} from "../../../features/resume3d/pipeline/colorSampler.ts";
 import { buildLineMesh } from "../../../features/resume3d/pipeline/buildLineMesh.ts";
-import { exportLinesToGLB } from "../../../features/resume3d/pipeline/GLBExporter.ts";
-import type { LineMeshInput } from "../../../features/resume3d/pipeline/GLBExporter.ts";
+import {
+  exportLinesToGLB,
+  type LineMeshInput,
+} from "../../../features/resume3d/pipeline/GLBExporter.ts";
 import {
   createOrientedBitmap,
   readOrientation,
 } from "../../../features/resume3d/pipeline/orientation.ts";
 import Page from "../../../components/Page.tsx";
 import { RESUME_PIPELINE_CONFIG } from "../../../features/resume3d/config.ts";
-import Tesseract from "tesseract.js";
+import { recognize } from "tesseract.js";
 
 type RecognizedLine = {
   text: string;
   bbox: { x0: number; y0: number; x1: number; y1: number };
   confidence: number;
 };
-
-type TesseractLoggerPayload = {
-  progress: number;
-  status: string;
-};
-
-type TesseractLine = {
-  text: string;
-  bbox: RecognizedLine["bbox"];
-  confidence: number;
-};
-
-type TesseractRecognition = {
-  data: {
-    lines?: TesseractLine[];
-  };
-};
-
-type TesseractModule = {
-  recognize: (
-    image: HTMLCanvasElement,
-    langs: string,
-    options?: { logger?: (payload: TesseractLoggerPayload) => void }
-  ) => Promise<TesseractRecognition>;
-};
-
-const tesseract: TesseractModule = Tesseract;
 
 type PipelineStage =
   | { stage: "idle" }
@@ -102,7 +78,6 @@ export default function OcrToGLB() {
         if (!ctx) throw new Error("2D context unavailable");
 
         setStage({ stage: "ocr", progress: 0 });
-        const { recognize } = tesseract;
         const result = await recognize(canvas, "eng", {
           logger: ({ progress, status }) => {
             if (status === "recognizing text") {
@@ -266,7 +241,8 @@ export default function OcrToGLB() {
           <ol>
             {lines.map((line, index) => (
               <li key={`${index}-${line.bbox.x0}-${line.bbox.y0}`}>
-                <code>{line.text}</code> ({Math.round(line.confidence)}%)
+                <code>{line.text}</code> Confidence: (
+                {Math.round(line.confidence)}%)
               </li>
             ))}
           </ol>

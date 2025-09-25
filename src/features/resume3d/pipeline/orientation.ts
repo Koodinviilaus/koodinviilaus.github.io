@@ -1,13 +1,12 @@
+import { orientation, parse } from "exifr";
+
 export type Orientation = number | undefined;
 
 export async function readOrientation(file: File): Promise<Orientation> {
   try {
-    const exifrModule = await import("exifr");
-    const orientationFn = (exifrModule as { orientation?: (blob: Blob) => Promise<number | undefined> }).orientation;
-    if (orientationFn) {
-      return await orientationFn(file);
+    if (orientation) {
+      return await orientation(file);
     }
-    const parse = (exifrModule as { parse?: (blob: Blob, fields: string[]) => Promise<Record<string, unknown>> }).parse;
     if (parse) {
       const data = await parse(file, ["Orientation"]);
       const value = data?.Orientation;
@@ -22,9 +21,13 @@ export async function readOrientation(file: File): Promise<Orientation> {
 
 export async function createOrientedBitmap(
   source: Blob,
-  orientation: Orientation,
-): Promise<{ bitmap: ImageBitmap; width: number; height: number; canvas: HTMLCanvasElement }>
-{
+  orientation: Orientation
+): Promise<{
+  bitmap: ImageBitmap;
+  width: number;
+  height: number;
+  canvas: HTMLCanvasElement;
+}> {
   const bitmap = await createImageBitmap(source);
   if (!orientation || orientation === 1) {
     const canvas = document.createElement("canvas");
@@ -50,14 +53,19 @@ export async function createOrientedBitmap(
   ctx.restore();
 
   const fixedBitmap = await createImageBitmap(canvas);
-  return { bitmap: fixedBitmap, width: canvas.width, height: canvas.height, canvas };
+  return {
+    bitmap: fixedBitmap,
+    width: canvas.width,
+    height: canvas.height,
+    canvas,
+  };
 }
 
 function applyOrientationTransform(
   ctx: CanvasRenderingContext2D,
   orientation: number,
   width: number,
-  height: number,
+  height: number
 ) {
   switch (orientation) {
     case 2:
