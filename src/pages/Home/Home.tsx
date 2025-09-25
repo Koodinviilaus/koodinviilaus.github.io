@@ -3,7 +3,7 @@ import ResumeViewer from "../../features/resume3d/viewer/ResumeViewer.tsx";
 import { resolveResumeGLBUrl } from "../../features/resume3d/viewer/viewerConfig.ts";
 
 export default function Home() {
-  const glbUrl = resolveResumeGLBUrl();
+  const resumeGLBUrl = resolveResumeGLBUrl();
   return (
     <Page>
       <header style={{ marginBottom: 24 }}>
@@ -13,7 +13,7 @@ export default function Home() {
           the GLB geometry.
         </p>
       </header>
-      <ResumeViewer glbUrl={glbUrl} />
+      <ResumeViewer resumeGLBUrl={resumeGLBUrl} />
     </Page>
   );
 }

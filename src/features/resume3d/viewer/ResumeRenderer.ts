@@ -5,7 +5,7 @@ type Pointer = { id: number; x: number; y: number };
 
 export type ResumeRendererOptions = {
   canvas: HTMLCanvasElement;
-  glbUrl: string;
+  resumeGLBUrl: string;
   onLoaded?: () => void;
   onError?: (error: unknown) => void;
   onStats?: (stats: THREE.WebGLInfo) => void;
@@ -18,6 +18,8 @@ const MIN_RADIUS = 20;
 const MAX_RADIUS = 400;
 const DAMPING = 0.08;
 
+// ResumeRenderer wraps the Three.js scene with unified pointer input and
+// matcap-driven shading tailored for the mobile résumé viewer.
 export class ResumeRenderer {
   private readonly opts: ResumeRendererOptions;
   private readonly canvas: HTMLCanvasElement;
@@ -75,7 +77,7 @@ export class ResumeRenderer {
     this.bindEvents();
     this.animate();
 
-    this.loadGLB(opts.glbUrl).catch((error) => {
+    this.loadGLB(opts.resumeGLBUrl).catch((error) => {
       console.error(error);
       opts.onError?.(error);
     });
@@ -83,6 +85,7 @@ export class ResumeRenderer {
 
   private bindEvents() {
     const canvas = this.canvas;
+    // PointerEvents give us a unified mouse/touch API (wheel used for desktop zoom).
     canvas.addEventListener("pointerdown", this.onPointerDown);
     canvas.addEventListener("pointermove", this.onPointerMove);
     canvas.addEventListener("pointerup", this.onPointerUp);
@@ -215,13 +218,13 @@ export class ResumeRenderer {
   };
 
   private async loadGLB(url: string) {
-    const glb = await this.loader.loadAsync(url);
+    const glTF = await this.loader.loadAsync(url);
 
     this.root.clear();
     this.materialByColor.clear();
 
     const meshes: THREE.Mesh[] = [];
-    glb.scene.traverse((child) => {
+    glTF.scene.traverse((child) => {
       if (child instanceof THREE.Mesh) {
         const mesh = child as THREE.Mesh;
         mesh.castShadow = false;
@@ -232,10 +235,10 @@ export class ResumeRenderer {
       }
     });
 
-    this.root.add(glb.scene);
+    this.root.add(glTF.scene);
 
     if (meshes.length) {
-      const box = new THREE.Box3().setFromObject(glb.scene);
+      const box = new THREE.Box3().setFromObject(glTF.scene);
       box.getCenter(this.controlsTarget);
       const size = box.getSize(new THREE.Vector3()).length();
       const radius = clamp(size * 0.9, 40, 260);

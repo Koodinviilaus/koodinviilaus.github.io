@@ -2,10 +2,10 @@ import { useEffect, useRef, useState } from "react";
 import { ResumeRenderer } from "./ResumeRenderer.ts";
 
 type Props = {
-  glbUrl: string;
+  resumeGLBUrl: string;
 };
 
-export function ResumeViewer({ glbUrl }: Props) {
+export function ResumeViewer({ resumeGLBUrl }: Props) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const rendererRef = useRef<ResumeRenderer | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -17,14 +17,14 @@ export function ResumeViewer({ glbUrl }: Props) {
 
     const renderer = new ResumeRenderer({
       canvas,
-      glbUrl,
+      resumeGLBUrl,
       onError: (err) => setError(err instanceof Error ? err.message : String(err)),
       onStats: (info) => setRenderCalls(info.render.calls),
     });
 
     rendererRef.current = renderer;
     return () => renderer.dispose();
-  }, [glbUrl]);
+  }, [resumeGLBUrl]);
 
   return (
     <div style={{ position: "relative", width: "100%", aspectRatio: "3 / 4" }}>

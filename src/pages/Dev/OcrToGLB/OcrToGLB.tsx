@@ -126,6 +126,7 @@ export default function OcrToGLB() {
         };
       });
 
+      // We export once per image to keep materials shared and mobile draw calls low.
       setStage({ stage: "export" });
       const blob = await exportLinesToGLB(lineMeshes, { binary: true });
 

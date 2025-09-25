@@ -3,10 +3,10 @@ import Page from "../../../components/Page.tsx";
 import { resolveResumeGLBUrl } from "../../../features/resume3d/viewer/viewerConfig.ts";
 
 export default function Resume() {
-  const glbUrl = resolveResumeGLBUrl();
+  const resumeGLBUrl = resolveResumeGLBUrl();
   return (
     <Page>
-      <ResumeViewer glbUrl={glbUrl} />
+      <ResumeViewer resumeGLBUrl={resumeGLBUrl} />
     </Page>
   );
 }

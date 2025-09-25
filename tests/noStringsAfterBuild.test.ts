@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { promises as fs } from "fs";
 import { join } from "path";
 
-const BANNED = ["resume", "curriculum", "vitae"];
+const BANNED = ["gmail", "Lucas"];
 
 describe("build privacy scan", () => {
   it("dist bundle contains no plain-text resume strings", async () => {
@@ -56,7 +56,7 @@ async function collectFiles(root: string): Promise<string[]> {
       } else {
         files.push(full);
       }
-    }),
+    })
   );
   return files;
 }

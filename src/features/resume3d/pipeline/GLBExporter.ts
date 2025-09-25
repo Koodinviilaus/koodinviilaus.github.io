@@ -16,13 +16,14 @@ export const DEFAULT_BANNED_STRINGS = ["resume", "curriculum", "vitae"];
 
 export async function exportLinesToGLB(
   lines: LineMeshInput[],
-  options: ExportOptions = {}
+  options: ExportOptions = {},
 ): Promise<Blob> {
   if (!lines.length) throw new Error("No line meshes provided");
 
   const scene = new THREE.Group();
   scene.name = "GeometryRoot";
 
+  // All line meshes share one material to keep draw calls predictable on mobile GPUs.
   const material = new THREE.MeshStandardMaterial({
     color: 0xffffff,
     metalness: 0.2,
@@ -33,6 +34,7 @@ export async function exportLinesToGLB(
   lines.forEach(({ mesh, color }, index) => {
     mesh.name = `Segment_${index}`;
     mesh.material = material;
+    // Persist average per-line color so the viewer can recover its palette.
     mesh.userData.lineColor = color;
     scene.add(mesh);
   });

@@ -9,7 +9,7 @@ const devRoutes: Array<{ path: string; element: JSX.Element }> = [];
 if (import.meta.env.DEV) {
   const DevOcr = lazy(() => import("./pages/Dev/OcrToGLB/OcrToGLB.tsx"));
   devRoutes.push({
-    path: "#/dev/glb",
+    path: "#/dev/GLB",
     element: (
       <Suspense fallback={<p>Loading dev tool…</p>}>
         <DevOcr />

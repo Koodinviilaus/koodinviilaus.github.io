@@ -1,6 +1,10 @@
-import { FontLoader, type Font } from "three/examples/jsm/loaders/FontLoader.js";
+import {
+  FontLoader,
+  type Font,
+} from "three/examples/jsm/loaders/FontLoader.js";
+import fontUrl from "../../../assets/fonts/helvetiker_regular.typeface.json?url";
 
-const FONT_URL = new URL("../../assets/fonts/helvetiker_regular.typeface.json", import.meta.url).href;
+const FONT_URL = fontUrl;
 
 let cachedFont: Promise<Font> | null = null;
 

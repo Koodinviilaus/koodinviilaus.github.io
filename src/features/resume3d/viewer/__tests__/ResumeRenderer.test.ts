@@ -73,7 +73,7 @@ describe("ResumeRenderer", () => {
     let lastDrawCalls = 0;
     const renderer = new ResumeRenderer({
       canvas,
-      glbUrl: "stub.glb",
+      resumeGLBUrl: "stub.glb",
       rendererFactory: () => rendererStub as unknown as THREE.WebGLRenderer,
       loaderFactory: () => loaderStub as GLTFLoader,
       matcapFactory: () => new THREE.Texture(),
