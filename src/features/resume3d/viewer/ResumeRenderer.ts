@@ -288,6 +288,18 @@ export class ResumeRenderer {
         meshes.push(mesh);
       }
     });
+    const hasEmbeddedPaper = meshes.some(
+      (mesh) => mesh.userData?.paperTexture === true,
+    );
+
+    const sceneBackground = glTF.scene.userData?.backgroundColor;
+    if (typeof sceneBackground === "number") {
+      this.renderer.setClearColor(sceneBackground, 1);
+      this.scene.background = new Color(sceneBackground);
+    } else {
+      this.renderer.setClearColor(RENDERER_CFG.clearColor, 1);
+      this.scene.background = new Color(RENDERER_CFG.backgroundColor);
+    }
 
     if (meshes.length) {
       const box = new Box3().setFromObject(glTF.scene);
@@ -297,31 +309,33 @@ export class ResumeRenderer {
       this.spherical.radius = radius;
       this.targetSpherical.radius = radius;
 
-      const paper = new Mesh(
-        new PlaneGeometry(
-          dimensions.x * PAPER_CFG.scalePadding,
-          dimensions.y * PAPER_CFG.scalePadding
-        ),
-        new MeshStandardMaterial({
-          color: PAPER_CFG.color,
-          metalness: 0.05,
-          roughness: 0.95,
-          side: DoubleSide,
-        })
-      );
-      paper.name = "PaperBackdrop";
-      paper.position.set(
-        this.controlsTarget.x,
-        this.controlsTarget.y,
-        box.min.z -
-          Math.max(
-            PAPER_CFG.minDepthOffset,
-            dimensions.z * PAPER_CFG.depthOffsetRatio
-          )
-      );
-      paper.renderOrder = -1;
-      this.paper = paper;
-      this.root.add(paper);
+      if (!this.paper && !hasEmbeddedPaper) {
+        const fallbackPaper = new Mesh(
+          new PlaneGeometry(
+            dimensions.x * PAPER_CFG.scalePadding,
+            dimensions.y * PAPER_CFG.scalePadding
+          ),
+          new MeshStandardMaterial({
+            color: PAPER_CFG.color,
+            metalness: 0.05,
+            roughness: 0.95,
+            side: DoubleSide,
+          })
+        );
+        fallbackPaper.name = "PaperBackdrop";
+        fallbackPaper.position.set(
+          this.controlsTarget.x,
+          this.controlsTarget.y,
+          box.min.z -
+            Math.max(
+              PAPER_CFG.minDepthOffset,
+              dimensions.z * PAPER_CFG.depthOffsetRatio
+            )
+        );
+        fallbackPaper.renderOrder = -1;
+        this.paper = fallbackPaper;
+        this.root.add(fallbackPaper);
+      }
     }
 
     this.root.add(glTF.scene);
@@ -330,6 +344,9 @@ export class ResumeRenderer {
   }
 
   private applyMaterial(mesh: Mesh) {
+    if (mesh.userData?.paperTexture) {
+      return;
+    }
     const colorData = mesh.userData?.lineColor as
       | [number, number, number]
       | undefined;

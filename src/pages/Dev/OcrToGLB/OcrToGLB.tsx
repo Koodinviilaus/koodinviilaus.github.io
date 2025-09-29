@@ -1,24 +1,35 @@
 import { useCallback, useRef, useState } from "react";
+import * as THREE from "three";
+import type { Font } from "three/examples/jsm/loaders/FontLoader.js";
+import type {
+  Bbox,
+  LoggerMessage,
+  PSM,
+  RecognizeResult,
+  Worker,
+} from "tesseract.js";
+
+import Page from "../../../components/Page.tsx";
 import { loadDefaultFont } from "../../../features/resume3d/fonts/defaultFont.ts";
 import {
   averageColor,
+  rgbToHex,
   type RGB,
 } from "../../../features/resume3d/pipeline/colorSampler.ts";
 import { buildLineMesh } from "../../../features/resume3d/pipeline/buildLineMesh.ts";
 import {
-  exportLinesToGLB,
-  type LineMeshInput,
-} from "../../../features/resume3d/pipeline/GLBExporter.ts";
-import {
   createOrientedBitmap,
   readOrientation,
 } from "../../../features/resume3d/pipeline/orientation.ts";
-import Page from "../../../components/Page.tsx";
+import {
+  exportLinesToGLB,
+  type LineMeshInput,
+} from "../../../features/resume3d/pipeline/GLBExporter.ts";
 import { RESUME_PIPELINE_CONFIG } from "../../../features/resume3d/config.ts";
 
 type RecognizedLine = {
   text: string;
-  bbox: { x0: number; y0: number; x1: number; y1: number };
+  bbox: Bbox;
   confidence: number;
 };
 
@@ -30,12 +41,158 @@ type PipelineStage =
   | { stage: "export" }
   | { stage: "done"; blob: Blob };
 
-const DEFAULT_IMAGE_PATH = "/.local/dev-resume.png";
-
 type DevWindow = Window & {
   __DEV_RESUME_GLB_URL?: string;
   __DEV_RESUME_GLB_BLOB?: Blob;
 };
+
+type ProgressCb = (progress: number) => void;
+type TesseractModule = typeof import("tesseract.js");
+
+const DEFAULT_IMAGE_PATH = "/.local/dev-resume.png";
+const OCR_LANG = "eng";
+const ROTATE_AUTO = true;
+type LifecycleWorker = Worker & {
+  loadLanguage?: (langs: string | string[]) => Promise<unknown>;
+  initialize?: (langs: string | string[], oem?: unknown) => Promise<unknown>;
+};
+
+async function recognizeLines(
+  canvas: HTMLCanvasElement,
+  onProgress: ProgressCb,
+): Promise<RecognizedLine[]> {
+  const tesseract: TesseractModule = await import("tesseract.js");
+  const worker = (await tesseract.createWorker(
+    undefined,
+    undefined,
+    {
+      logger: ({ status, progress }: LoggerMessage) => {
+        if (status === "recognizing text") onProgress(progress);
+      },
+    },
+  )) as LifecycleWorker;
+
+  const fallbackSegMode = "3" as unknown as PSM;
+  const pageSegMode: PSM =
+    tesseract.PSM?.AUTO_OSD ??
+    tesseract.PSM?.AUTO ??
+    tesseract.PSM?.AUTO_ONLY ??
+    fallbackSegMode;
+
+  try {
+    await worker.load();
+    if (typeof worker.loadLanguage === "function") {
+      await worker.loadLanguage(OCR_LANG);
+    }
+    if (typeof worker.initialize === "function") {
+      await worker.initialize(OCR_LANG, tesseract.OEM?.LSTM_ONLY);
+    } else {
+      await worker.reinitialize?.(OCR_LANG, tesseract.OEM?.LSTM_ONLY);
+    }
+    await worker.setParameters({
+      tessedit_pageseg_mode: pageSegMode,
+      preserve_interword_spaces: "1",
+      tessedit_char_whitelist:
+        "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-:/,.()&' \n",
+    });
+
+    const { data }: RecognizeResult = await worker.recognize(canvas, {
+      rotateAuto: ROTATE_AUTO,
+    });
+
+    return (data.lines ?? [])
+      .filter((line) => line.text.trim().length > 0)
+      .map((line) => ({
+        text: line.text,
+        bbox: line.bbox as Bbox,
+        confidence: Math.round(line.confidence ?? 0),
+      }));
+  } finally {
+    await worker.terminate();
+  }
+}
+
+function createPaper(
+  canvas: HTMLCanvasElement,
+  width: number,
+  height: number,
+) {
+  const pixelToWorld = RESUME_PIPELINE_CONFIG.planeWidth / Math.max(1, width);
+  const planeHeight = height * pixelToWorld;
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.flipY = false;
+  texture.anisotropy = 4;
+
+  const material = new THREE.MeshStandardMaterial({
+    map: texture,
+    metalness: 0.08,
+    roughness: 0.92,
+  });
+  material.name = "ResumePaperMaterial";
+
+  const geometry = new THREE.PlaneGeometry(
+    RESUME_PIPELINE_CONFIG.planeWidth * RESUME_PIPELINE_CONFIG.planePaddingRatio,
+    planeHeight * RESUME_PIPELINE_CONFIG.planePaddingRatio,
+  );
+
+  const mesh = new THREE.Mesh(geometry, material);
+  mesh.name = "ResumePaper";
+  mesh.userData.paperTexture = true;
+
+  return { mesh, pixelToWorld };
+}
+
+function buildLineMeshes(
+  lines: RecognizedLine[],
+  ctx: CanvasRenderingContext2D,
+  imageWidth: number,
+  imageHeight: number,
+  font: Font,
+  pixelToWorld: number,
+): LineMeshInput[] {
+  return lines.map((line) => {
+    const rect = {
+      x: line.bbox.x0,
+      y: line.bbox.y0,
+      width: line.bbox.x1 - line.bbox.x0,
+      height: line.bbox.y1 - line.bbox.y0,
+    };
+
+    const color = averageColor(ctx, rect) as RGB;
+    const mesh = buildLineMesh(
+      {
+        text: line.text,
+        bounds: {
+          left: rect.x,
+          right: rect.x + rect.width,
+          top: rect.y,
+          bottom: rect.y + rect.height,
+        },
+      },
+      {
+        font,
+        imageWidth,
+        imageHeight,
+        scale: pixelToWorld,
+        fontSize: RESUME_PIPELINE_CONFIG.fontSize,
+        depth: RESUME_PIPELINE_CONFIG.lineExtrudeDepth,
+        curveSegments: RESUME_PIPELINE_CONFIG.curveSegments,
+        zOffset: RESUME_PIPELINE_CONFIG.lineLift,
+        depthScaleMultiplier: RESUME_PIPELINE_CONFIG.depthScaleMultiplier,
+      },
+    );
+
+    mesh.position.z = RESUME_PIPELINE_CONFIG.lineLift;
+
+    return { mesh, color } satisfies LineMeshInput;
+  });
+}
+
+function revokeIfPresent(url: string | null) {
+  if (url) URL.revokeObjectURL(url);
+}
 
 export default function OcrToGLB() {
   const [lines, setLines] = useState<RecognizedLine[]>([]);
@@ -55,7 +212,7 @@ export default function OcrToGLB() {
       }
     }
 
-    URL.revokeObjectURL(downloadUrlRef.current);
+    revokeIfPresent(downloadUrlRef.current);
     downloadUrlRef.current = null;
     setDownloadUrl(null);
   }, []);
@@ -68,81 +225,54 @@ export default function OcrToGLB() {
       setStage({ stage: "loading", detail: file.name });
 
       try {
-        const { recognize } = await import("tesseract.js");
         const orientation = await readOrientation(file);
         const { canvas, width, height } = await createOrientedBitmap(
           file,
-          orientation
+          orientation,
         );
         const ctx = canvas.getContext("2d");
         if (!ctx) throw new Error("2D context unavailable");
 
         setStage({ stage: "ocr", progress: 0 });
-        const result = await recognize(canvas, "eng", {
-          logger: ({ progress, status }) => {
-            if (status === "recognizing text") {
-              setStage({ stage: "ocr", progress });
-            }
-          },
-        });
-
-        const recognized: RecognizedLine[] = (result.data.lines ?? [])
-          .filter((line) => line.text.trim().length > 0)
-          .map((line) => ({
-            text: line.text,
-            bbox: line.bbox,
-            confidence: line.confidence ?? 0,
-          }));
-
-        setLines(recognized);
+        const recognisedLines = await recognizeLines(canvas, (progress) =>
+          setStage({ stage: "ocr", progress }),
+        );
+        setLines(recognisedLines);
 
         setStage({ stage: "building" });
         const font = await loadDefaultFont();
-        const safePlaneWidth =
-          RESUME_PIPELINE_CONFIG.planeWidth /
-          RESUME_PIPELINE_CONFIG.planePaddingRatio;
-        const pixelToWorld = safePlaneWidth / Math.max(1, width);
-        const zOffsetStep = RESUME_PIPELINE_CONFIG.zFightingOffset;
+        const { mesh: paper, pixelToWorld } = createPaper(
+          canvas,
+          width,
+          height,
+        );
 
-        const lineMeshes: LineMeshInput[] = recognized.map((line, index) => {
-          const bounds = line.bbox;
-          const rect = {
-            x: bounds.x0,
-            y: bounds.y0,
-            width: bounds.x1 - bounds.x0,
-            height: bounds.y1 - bounds.y0,
-          };
-          const color = averageColor(ctx, rect) as RGB;
-          const mesh = buildLineMesh(
-            {
-              text: line.text,
-              bounds: {
-                left: rect.x,
-                right: rect.x + rect.width,
-                top: rect.y,
-                bottom: rect.y + rect.height,
-              },
-            },
-            {
-              font,
-              imageWidth: width,
-              imageHeight: height,
-              scale: pixelToWorld,
-              fontSize: RESUME_PIPELINE_CONFIG.fontSize,
-              depth: RESUME_PIPELINE_CONFIG.lineExtrudeDepth,
-              curveSegments: RESUME_PIPELINE_CONFIG.curveSegments,
-              zOffset: index * zOffsetStep,
-              depthScaleMultiplier: RESUME_PIPELINE_CONFIG.depthScaleMultiplier,
-            }
-          );
-          return {
-            mesh,
-            color,
-          };
+        const backgroundRGB = averageColor(ctx, {
+          x: 0,
+          y: 0,
+          width,
+          height,
         });
 
+        const lineMeshes = buildLineMeshes(
+          recognisedLines,
+          ctx,
+          width,
+          height,
+          font,
+          pixelToWorld,
+        );
+
+        const meshInputs: LineMeshInput[] = [
+          { mesh: paper, preserveMaterial: true },
+          ...lineMeshes,
+        ];
+
         setStage({ stage: "export" });
-        const blob = await exportLinesToGLB(lineMeshes, { binary: true });
+        const blob = await exportLinesToGLB(meshInputs, {
+          binary: true,
+          backgroundColor: rgbToHex(backgroundRGB),
+        });
 
         const objectUrl = URL.createObjectURL(blob);
         downloadUrlRef.current = objectUrl;
@@ -150,12 +280,7 @@ export default function OcrToGLB() {
 
         if (import.meta.env.DEV) {
           const devWindow = window as DevWindow;
-          if (
-            devWindow.__DEV_RESUME_GLB_URL &&
-            devWindow.__DEV_RESUME_GLB_URL !== objectUrl
-          ) {
-            URL.revokeObjectURL(devWindow.__DEV_RESUME_GLB_URL);
-          }
+          revokeIfPresent(devWindow.__DEV_RESUME_GLB_URL ?? null);
           devWindow.__DEV_RESUME_GLB_BLOB = blob;
           devWindow.__DEV_RESUME_GLB_URL = objectUrl;
         }
@@ -168,7 +293,7 @@ export default function OcrToGLB() {
         setStage({ stage: "idle" });
       }
     },
-    [resetDownloadUrl]
+    [resetDownloadUrl],
   );
 
   const triggerDefault = useCallback(async () => {
@@ -195,10 +320,7 @@ export default function OcrToGLB() {
   return (
     <Page>
       <h1>Image → OCR → 3D text → GLB</h1>
-      <p>
-        This tool stays in dev builds; use it to convert a résumé snapshot into
-        geometry.
-      </p>
+      <p>This dev-only workflow turns a résumé snapshot into geometry.</p>
       <div
         style={{ display: "flex", gap: 16, flexWrap: "wrap", marginBottom: 24 }}
       >
@@ -213,10 +335,7 @@ export default function OcrToGLB() {
             }}
           />
         </label>
-        <button
-          type="button"
-          onClick={() => triggerDefault().catch(console.error)}
-        >
+        <button type="button" onClick={() => triggerDefault().catch(console.error)}>
           Use /.local/dev-resume.png
         </button>
         {downloadUrl && (
@@ -241,8 +360,7 @@ export default function OcrToGLB() {
           <ol>
             {lines.map((line, index) => (
               <li key={`${index}-${line.bbox.x0}-${line.bbox.y0}`}>
-                <code>{line.text}</code> Confidence: (
-                {Math.round(line.confidence)}%)
+                <code>{line.text}</code> (confidence {line.confidence}%)
               </li>
             ))}
           </ol>

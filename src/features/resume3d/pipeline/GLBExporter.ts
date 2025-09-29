@@ -1,15 +1,18 @@
-import { Material, Group, MeshStandardMaterial, Mesh } from "three";
+import { Group, MeshStandardMaterial, Mesh } from "three";
+import type { Material, BufferGeometry } from "three";
 import { GLTFExporter } from "three/examples/jsm/exporters/GLTFExporter.js";
 import type { TextGeometry } from "three/examples/jsm/geometries/TextGeometry.js";
 import type { RGB } from "./colorSampler.ts";
 
 export type LineMeshInput = {
-  mesh: Mesh<TextGeometry, Material | Material[]>;
-  color: RGB;
+  mesh: Mesh<TextGeometry | BufferGeometry, Material | Material[]>;
+  color?: RGB;
+  preserveMaterial?: boolean;
 };
 
 export type ExportOptions = {
   binary?: boolean;
+  backgroundColor?: number;
 };
 
 export const DEFAULT_BANNED_STRINGS = ["resume", "curriculum", "vitae"];
@@ -31,13 +34,20 @@ export async function exportLinesToGLB(
   });
   material.name = "SharedLineMat";
 
-  lines.forEach(({ mesh, color }, index) => {
+  lines.forEach(({ mesh, color, preserveMaterial }, index) => {
     mesh.name = `Segment_${index}`;
-    mesh.material = material;
-    // Persist average per-line color so the viewer can recover its palette.
-    mesh.userData.lineColor = color;
+    if (!preserveMaterial) {
+      mesh.material = material;
+      if (color) {
+        mesh.userData.lineColor = color;
+      }
+    }
     scene.add(mesh);
   });
+
+  if (typeof options.backgroundColor === "number") {
+    scene.userData.backgroundColor = options.backgroundColor;
+  }
 
   const exporter = new GLTFExporter();
 

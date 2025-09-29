@@ -8,9 +8,9 @@ export const RESUME_PIPELINE_CONFIG = {
   /** Number of curve segments in the generated text geometry. */
   curveSegments: 6,
   /** Additional padding added to keep text slightly inside the paper edges. */
-  planePaddingRatio: 1.08,
-  /** Step used to push consecutive lines on the Z axis to avoid z-fighting. */
-  zFightingOffset: 0.4,
+  planePaddingRatio: 1,
+  /** Z offset applied to lift text meshes above the paper plane. */
+  lineLift: 0.45,
   /** Multiplier applied to the Z scale for extruded meshes. */
   depthScaleMultiplier: 3.2,
 };

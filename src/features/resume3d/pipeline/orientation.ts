@@ -1,4 +1,3 @@
-
 export type Orientation = number | undefined;
 
 export async function readOrientation(file: File): Promise<Orientation> {

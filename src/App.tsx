@@ -19,6 +19,7 @@ if (import.meta.env.DEV) {
 }
 
 export default function App() {
+  // TODO lazy load?
   return (
     <HashRouter
       routes={[

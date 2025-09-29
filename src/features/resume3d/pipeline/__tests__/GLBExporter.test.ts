@@ -31,7 +31,7 @@ describe("GLB export", () => {
         scale,
         curveSegments: RESUME_PIPELINE_CONFIG.curveSegments,
         depthScaleMultiplier: RESUME_PIPELINE_CONFIG.depthScaleMultiplier,
-        zOffset: RESUME_PIPELINE_CONFIG.zFightingOffset,
+        zOffset: RESUME_PIPELINE_CONFIG.lineLift,
       }
     );
 
