@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { averageColor, rgbToHex } from "../colorSampler.ts";
+import { averageColor, hexToRgb, mixRgb, rgbToHex } from "../colorSampler.ts";
 
 describe("colorSampler", () => {
   it("returns average color for solid patch", () => {
@@ -19,4 +19,11 @@ describe("colorSampler", () => {
     expect([r, g, b]).toEqual(expected);
     expect(rgbToHex([r, g, b])).toBe(0x336699);
   });
+});
+
+it("converts between hex and rgb and blends colors", () => {
+  const rgb = hexToRgb(0x336699);
+  expect(rgb).toEqual([0x33, 0x66, 0x99]);
+  const mixed = mixRgb(rgb, [0xff, 0xff, 0xff], 0.5);
+  expect(mixed).toEqual([0x99, 0xb3, 0xcc]);
 });

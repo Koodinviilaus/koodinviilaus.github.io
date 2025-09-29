@@ -35,3 +35,18 @@ export function averageColor(
 export function rgbToHex([r, g, b]: RGB): number {
   return (r << 16) | (g << 8) | b;
 }
+
+export function hexToRgb(hex: number): RGB {
+  const r = (hex >> 16) & 0xff;
+  const g = (hex >> 8) & 0xff;
+  const b = hex & 0xff;
+  return [r, g, b];
+}
+
+export function mixRgb(base: RGB, target: RGB, blend: number): RGB {
+  const clamped = Math.min(1, Math.max(0, blend));
+  return [0, 1, 2].map((index) => {
+    const value = base[index] * (1 - clamped) + target[index] * clamped;
+    return Math.round(value);
+  }) as RGB;
+}

@@ -13,6 +13,17 @@ export const RESUME_PIPELINE_CONFIG = {
   lineLift: 0.45,
   /** Multiplier applied to the Z scale for extruded meshes. */
   depthScaleMultiplier: 3.2,
+  /** Low-confidence OCR handling tweaks. */
+  lowConfidence: {
+    /** Below this confidence, boost readability. */
+    threshold: 82,
+    /** Blend factor towards the fallback color (0..1). */
+    colorBlend: 0.5,
+    /** Neutral fallback color for hard-to-read lines. */
+    fallbackColor: 0x1f2329,
+    /** Extra depth scale to give shading cues. */
+    depthBoost: 1.3,
+  },
 };
 
 export const RESUME_VIEWER_CONFIG = {
@@ -40,6 +51,9 @@ export const RESUME_VIEWER_CONFIG = {
     },
     invertHorizontalDrag: true,
     orbitDamping: 0.08,
+    initialTheta: Math.PI * 1.25,
+    initialPhi: Math.PI / 3.2,
+    initialRadius: 140,
     zoom: {
       deltaMultiplier: 0.012,
       minRadius: 18,

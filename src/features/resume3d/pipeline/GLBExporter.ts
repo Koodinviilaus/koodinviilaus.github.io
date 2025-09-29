@@ -68,8 +68,7 @@ export async function exportLinesToGLB(
 
   const json = JSON.stringify(result);
   ensureNoBannedStrings(json, DEFAULT_BANNED_STRINGS);
-  const buffer = new TextEncoder().encode(json);
-  return new Blob([buffer], { type: "model/gltf+json" });
+  return new Blob([json], { type: "model/gltf+json" });
 }
 
 export function ensureNoBannedStrings(input: string, banned: string[]): void {

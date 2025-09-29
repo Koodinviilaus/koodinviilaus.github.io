@@ -47,6 +47,9 @@ const {
 const MIN_RADIUS = CONTROLS_CFG.zoom.minRadius;
 const MAX_RADIUS = CONTROLS_CFG.zoom.maxRadius;
 const DAMPING = CONTROLS_CFG.orbitDamping;
+const INITIAL_THETA = CONTROLS_CFG.initialTheta ?? Math.PI * 1.25;
+const INITIAL_PHI = CONTROLS_CFG.initialPhi ?? Math.PI / 3;
+const INITIAL_RADIUS = CONTROLS_CFG.initialRadius ?? 140;
 const POLAR_MIN = 0.3;
 const POLAR_MAX = Math.PI - 0.2;
 
@@ -107,7 +110,11 @@ export class ResumeRenderer {
 
     this.camera = new PerspectiveCamera(45, 1, 0.1, 1000);
     this.controlsTarget = new Vector3();
-    this.spherical = new Spherical(140, Math.PI / 3, Math.PI / 4);
+    this.spherical = new Spherical(
+      INITIAL_RADIUS,
+      INITIAL_PHI,
+      INITIAL_THETA
+    );
     this.targetSpherical = this.spherical.clone();
 
     this.root = new Group();
@@ -246,7 +253,7 @@ export class ResumeRenderer {
       this.targetSpherical.radius,
       DAMPING
     );
-    this.spherical.theta = dampAngle(
+    this.spherical.theta = damp(
       this.spherical.theta,
       this.targetSpherical.theta,
       DAMPING
@@ -444,17 +451,6 @@ function createDefaultMatcapTexture(): Texture {
 
 function damp(current: number, target: number, lambda: number) {
   return MathUtils.damp(current, target, lambda, 1 / 60);
-}
-
-function dampAngle(current: number, target: number, lambda: number) {
-  return (
-    current +
-    MathUtils.damp(0, normalizeAngle(target - current), lambda, 1 / 60)
-  );
-}
-
-function normalizeAngle(angle: number) {
-  return Math.atan2(Math.sin(angle), Math.cos(angle));
 }
 
 function clamp(value: number, min: number, max: number) {

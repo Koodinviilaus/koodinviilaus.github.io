@@ -13,6 +13,8 @@ import Page from "../../../components/Page.tsx";
 import { loadDefaultFont } from "../../../features/resume3d/fonts/defaultFont.ts";
 import {
   averageColor,
+  hexToRgb,
+  mixRgb,
   rgbToHex,
   type RGB,
 } from "../../../features/resume3d/pipeline/colorSampler.ts";
@@ -122,7 +124,7 @@ function createPaper(
 
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
-  texture.flipY = false;
+  texture.flipY = true;
   texture.anisotropy = 4;
 
   const material = new THREE.MeshStandardMaterial({
@@ -152,6 +154,8 @@ function buildLineMeshes(
   font: Font,
   pixelToWorld: number,
 ): LineMeshInput[] {
+  const lowConfidence = RESUME_PIPELINE_CONFIG.lowConfidence;
+  const fallbackRgb = hexToRgb(lowConfidence.fallbackColor);
   return lines.map((line) => {
     const rect = {
       x: line.bbox.x0,
@@ -160,7 +164,7 @@ function buildLineMeshes(
       height: line.bbox.y1 - line.bbox.y0,
     };
 
-    const color = averageColor(ctx, rect) as RGB;
+    let color = averageColor(ctx, rect) as RGB;
     const mesh = buildLineMesh(
       {
         text: line.text,
@@ -183,6 +187,14 @@ function buildLineMeshes(
         depthScaleMultiplier: RESUME_PIPELINE_CONFIG.depthScaleMultiplier,
       },
     );
+
+    mesh.userData.confidence = line.confidence;
+
+    if (line.confidence < lowConfidence.threshold) {
+      color = mixRgb(color, fallbackRgb, lowConfidence.colorBlend);
+      mesh.scale.z *= lowConfidence.depthBoost;
+      mesh.userData.lowConfidence = true;
+    }
 
     mesh.position.z = RESUME_PIPELINE_CONFIG.lineLift;
 
