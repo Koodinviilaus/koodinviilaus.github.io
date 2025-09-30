@@ -1,7 +1,7 @@
 # About
 
 Personal page for koodinviilaus.github.io, for showcasing technical skills
-and tech demo type things.  
+and tech demo type things.
 
 ## 3D Resume Renderer
 
@@ -26,8 +26,8 @@ While running the dev server, open `#/dev/GLB`:
 
 ### Environment configuration
 
-| Variable | Purpose | Default |
-| --- | --- | --- |
+| Variable              | Purpose                                        | Default       |
+| --------------------- | ---------------------------------------------- | ------------- |
 | `VITE_RESUME_GLB_URL` | Public URL of the résumé GLB loaded at runtime | `/resume.glb` |
 
 When the variable is omitted the viewer falls back to the bundled `public/resume.glb`. Set it if you host the GLB elsewhere (still needs to be accessible from the built site).
@@ -60,12 +60,27 @@ When the variable is omitted the viewer falls back to the bundled `public/resume
 - `npm run lint` – run ESLint
 - `npm run preview` – preview the production build locally
 
-## Planned features
+## Planned features and improvements
 
+### 1.0
+
+- Nicer page UI
+- Some info on the page
+- (Slighty) Better view controls
+- My actual resume
+
+### 1.1+
+
+- Better rendering
 - Upload and view your own resume in 3D
 
 ## Known Issues
+
 <!-- FIXME -->
+
+### General
+
+- Add way
 
 ### Viewer/Renderer
 
